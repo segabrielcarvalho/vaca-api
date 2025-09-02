@@ -1,0 +1,112 @@
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Código de Acesso</title>
+    <style>
+      :root{
+      --from:#9B6AFB;
+      --to:#B84CD4;
+    }
+    body {
+        font-family: Arial, Helvetica, sans-serif;
+        background-color: #f5f5f5;
+        margin: 0;
+        padding: 0;
+      }
+    .logo-text{
+      font-family: "Nunito", system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+      font-weight: 900;
+      font-size: clamp(40px, 9vw, 95px);
+      line-height: 0.9;
+      letter-spacing: .02em;
+      margin: auto;
+
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: #9e74f7;
+      align-items: baseline;
+      text-rendering: geometricPrecision;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        background-color: #ffffff;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      }
+      .header {
+        text-align: center;
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        align-items: end;
+        background: #292929;
+        height: 115px;
+      }
+      .header span {
+         color: #fff;
+      }
+      .header svg {
+        max-height: 54px;
+        width: 100px;
+      }
+      .content {
+        padding: 32px 24px;
+        color: #333333;
+        line-height: 1.6;
+      }
+      .content h1 {
+        font-size: 22px;
+        margin-bottom: 16px;
+        color: #111827;
+      }
+      .code-box {
+        background-color: #f3f4f6;
+        border-radius: 6px;
+        padding: 16px;
+        text-align: center;
+        margin: 24px 0;
+      }
+      .code {
+        font-size: 32px;
+        font-weight: bold;
+        letter-spacing: 6px;
+        color: #1f2937;
+      }
+      .footer {
+        font-size: 12px;
+        color: #9ca3af;
+        text-align: center;
+        padding: 16px;
+        background-color: #f9fafb;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+         <h1 class="logo-text">FIA</h1>
+      </div>
+
+      <div class="content">
+        <h1>Olá {{name}},</h1>
+        <p>Use o código abaixo para acessar sua conta:</p>
+
+        <div class="code-box">
+          <div class="code">{{code}}</div>
+        </div>
+
+        <p>O código expira em {{expirationMinutes}} minutos.</p>
+        <p>Caso não tenha solicitado este código, ignore esta mensagem.</p>
+      </div>
+
+      <div class="footer">
+        {{appName}}
+      </div>
+    </div>
+  </body>
+</html>
