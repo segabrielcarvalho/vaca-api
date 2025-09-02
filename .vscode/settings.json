@@ -1,0 +1,61 @@
+{
+   "cSpell.language": "pt,pt-BR,en,en-US,en-GB",
+   "editor.tabSize": 2,
+   "editor.defaultFormatter": "esbenp.prettier-vscode",
+   "editor.formatOnSave": true,
+   "editor.codeActionsOnSave": {
+      "source.fixAll": "explicit",
+      "source.fixAll.eslint": "always",
+      "source.organizeImports": "always"
+   },
+   "material-icon-theme.activeIconPack": "nest",
+   "material-icon-theme.folders.associations": {
+      "modules/auth": "",
+      "modules/email": "",
+      "modules/prisma": "",
+      "modules/reports": ""
+   },
+   "typescript.preferences.importModuleSpecifier": "relative",
+   "[dotenv]": {
+      "editor.defaultFormatter": "foxundermoon.shell-format"
+   },
+   "[dockerfile]": {
+      "editor.defaultFormatter": "foxundermoon.shell-format"
+   },
+   "[shellscript]": {
+      "editor.defaultFormatter": "foxundermoon.shell-format"
+   },
+   "[ignore]": {
+      "editor.defaultFormatter": "foxundermoon.shell-format"
+   },
+   "[typescript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+   },
+   "[prisma]": {
+      "editor.defaultFormatter": "Prisma.prisma"
+   },
+   "cSpell.words": [
+      "ALNUM",
+      "bullmq",
+      "chunker",
+      "datasource",
+      "dqbd",
+      "Meente",
+      "mentee",
+      "mentees",
+      "Mentees",
+      "nestgraphql",
+      "nestjs",
+      "openai",
+      "OPENAI",
+      "postgresql",
+      "presigner",
+      "qdrant",
+      "QLJSON",
+      "sendgrid",
+      "tiktoken",
+      "upserted",
+      "uuidv",
+      "wsse"
+   ]
+}
