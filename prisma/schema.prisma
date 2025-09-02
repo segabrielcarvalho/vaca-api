@@ -1,0 +1,42 @@
+generator client {
+   provider = "prisma-client-js"
+}
+
+datasource db {
+   provider = "postgresql"
+   url      = env("DATABASE_URL")
+}
+
+generator nestgraphql {
+   provider = "prisma-nestjs-graphql"
+   output   = "../@generated"
+}
+
+enum RoleEnum {
+   admin
+   user
+   mentee
+}
+
+enum GenderEnum {
+   male
+   female
+   other
+}
+
+model User {
+   id        String   @id @default(uuid())
+   createdAt DateTime @default(now())
+   updatedAt DateTime @updatedAt
+   isActive  Boolean  @default(true)
+   isTest    Boolean  @default(false)
+
+   name              String
+   email             String    @unique
+   encryptedPassword String?
+   lastSession       DateTime?
+   verifiedEmail     Boolean   @default(false)
+
+   role   RoleEnum
+   gender GenderEnum?
+}
