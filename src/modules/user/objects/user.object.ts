@@ -1,6 +1,5 @@
 import { Field, ID, ObjectType } from '@nestjs/graphql';
 import { GenderEnum, RoleEnum } from '@prisma/client';
-import { Type } from 'class-transformer';
 import {
    IsBoolean,
    IsDate,
@@ -9,9 +8,7 @@ import {
    IsOptional,
    IsString,
    IsUUID,
-   ValidateNested,
 } from 'class-validator';
-import { MenteeObject } from '../../mentee/objects/mentee.object';
 
 @ObjectType()
 export class UserObject {
@@ -60,11 +57,6 @@ export class UserObject {
    @IsOptional()
    @Field(() => GenderEnum, { nullable: true })
    gender?: `${GenderEnum}` | null;
-
-   @ValidateNested()
-   @Type(() => MenteeObject)
-   @Field(() => MenteeObject, { nullable: true })
-   Mentee?: MenteeObject | null;
 
    // @Field(() => UserAgent, { nullable: true })
    // UserAgent?: UserAgent | null;

@@ -7,7 +7,7 @@ import { CreateUserArgs } from '../../args/create-user.args';
 export class CreateUserService {
    constructor(private readonly prisma: PrismaService) {}
 
-   async run({ data: { menteeType, ...rest } }: CreateUserArgs) {
+   async run({ data: { ...rest } }: CreateUserArgs) {
       if (rest.role === RoleEnum.admin)
          throw new BadRequestException('Não é permitido criar usuários admin.');
 
@@ -19,12 +19,9 @@ export class CreateUserService {
       const relations: Record<string, any> = {};
 
       if (rest.role === RoleEnum.user) relations.UserAgent = { create: {} };
-      if (rest.role === RoleEnum.mentee)
-         relations.Mentee = { create: { type: menteeType ?? 'insider' } };
 
       const user = await this.prisma.user.create({
          data: { ...rest, ...relations },
-         include: { UserAgent: true, Mentee: true },
       });
 
       return user;

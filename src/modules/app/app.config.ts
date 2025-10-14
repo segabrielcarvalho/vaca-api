@@ -6,14 +6,12 @@ const appConfig = registerAs('app', () => {
    const environment = process.env.NODE_ENV;
    const baseApiUrl = process.env.BASE_API_URL || '';
    const baseWebUrl = process.env.BASE_WEB_URL || '';
-   const baseAdminUrl = process.env.BASE_ADMIN_URL || '';
    const apolloGraphRef = process.env.APOLLO_GRAPH_REF || '';
    return {
       port,
       environment,
       baseApiUrl,
       baseWebUrl,
-      baseAdminUrl,
       apolloGraphRef,
    };
 });
@@ -28,7 +26,6 @@ export const appConfigValidation = z.object({
       .default('20003'),
    BASE_API_URL: z.string().url(),
    BASE_WEB_URL: z.string().url(),
-   BASE_ADMIN_URL: z.string().url(),
    NODE_ENV: z
       .enum(['development', 'production', 'test'])
       .default('development'),

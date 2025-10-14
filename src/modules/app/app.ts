@@ -39,7 +39,6 @@ async function getApp() {
 
    const frontUrl = config.get<string>('app.baseWebUrl');
 
-
    app.enableCors({
       origin: [frontUrl],
       credentials: true,
