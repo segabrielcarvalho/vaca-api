@@ -30,6 +30,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt-graphql') {
       if (!user) return false;
 
       const { encryptedPassword, ...safeUser } = user;
+      void encryptedPassword;
 
       return safeUser as ICurrentUser;
    }

@@ -24,6 +24,18 @@ enum GenderEnum {
    other
 }
 
+enum AgentTypeEnum {
+   teacher
+   coordinator
+   director
+}
+
+enum CorrectionStatus {
+   pending
+   graded
+   returned
+}
+
 model User {
    id            String   @id @default(uuid())
    createdAt     DateTime @default(now())
@@ -32,11 +44,222 @@ model User {
    isTest        Boolean  @default(false)
    verifiedEmail Boolean  @default(false)
 
-   name              String
+   name              String?
    email             String    @unique
    encryptedPassword String?
    lastSession       DateTime?
 
    role   RoleEnum
    gender GenderEnum?
+
+   Student Student?
+   Agent   Agent?
+}
+
+model Student {
+   id        String   @id @default(uuid())
+   createdAt DateTime @default(now())
+   updatedAt DateTime @updatedAt
+
+   registrationNumber String @unique
+   userId             String @unique
+   User               User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+   Enrollments StudentKlass[]
+   Corrections CorrectionExam[]
+}
+
+model Agent {
+   id        String   @id @default(uuid())
+   createdAt DateTime @default(now())
+   updatedAt DateTime @updatedAt
+
+   userId String @unique
+   User   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+   Roles AgentRole[]
+
+   Corrections CorrectionExam[]
+   Schools     School[]
+   Courses     Course[]
+   Klasses     Klass[]
+}
+
+model AgentRole {
+   id   String        @id @default(uuid())
+   type AgentTypeEnum
+
+   agentId String
+   Agent   Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+   @@unique([agentId, type])
+   @@index([agentId])
+}
+
+model School {
+   id        String   @id @default(uuid())
+   createdAt DateTime @default(now())
+   updatedAt DateTime @updatedAt
+   isActive  Boolean  @default(true)
+
+   name        String
+   description String?
+   bannerPath  String?
+
+   directorId String?
+   Director   Agent?  @relation(fields: [directorId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+   Courses Course[]
+}
+
+model Course {
+   id        String   @id @default(uuid())
+   createdAt DateTime @default(now())
+   updatedAt DateTime @updatedAt
+   isActive  Boolean  @default(true)
+
+   name        String
+   description String?
+   bannerPath  String?
+
+   schoolId String
+   School   School @relation(fields: [schoolId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+   coordinatorId String?
+   Coordinator   Agent?  @relation(fields: [coordinatorId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+   Klasses Klass[]
+
+   @@unique([schoolId, name])
+   @@index([schoolId])
+}
+
+model Klass {
+   id        String   @id @default(uuid())
+   createdAt DateTime @default(now())
+   updatedAt DateTime @updatedAt
+   isActive  Boolean  @default(true)
+
+   name        String
+   description String?
+   bannerPath  String?
+
+   courseId String
+   Course   Course @relation(fields: [courseId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+   teacherId String?
+   Teacher   Agent?  @relation(fields: [teacherId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+   Exams       Exam[]
+   Enrollments StudentKlass[]
+
+   @@unique([courseId, name])
+   @@index([courseId])
+}
+
+model StudentKlass {
+   id String @id @default(uuid())
+
+   startedAt DateTime  @default(now())
+   endedAt   DateTime?
+
+   studentId String
+   Student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+   klassId String
+   Klass   Klass  @relation(fields: [klassId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+   @@unique([studentId, klassId, startedAt])
+   @@index([klassId])
+   @@index([studentId])
+}
+
+model Exam {
+   id        String   @id @default(uuid())
+   createdAt DateTime @default(now())
+   updatedAt DateTime @updatedAt
+   isActive  Boolean  @default(true)
+
+   title       String
+   description String?
+   filePath    String
+
+   klassId String
+   Klass   Klass  @relation(fields: [klassId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+   Questions   Question[]
+   Corrections CorrectionExam[]
+
+   @@unique([klassId, title])
+   @@index([klassId])
+}
+
+model Question {
+   id        String   @id @default(uuid())
+   createdAt DateTime @default(now())
+   updatedAt DateTime @updatedAt
+   isActive  Boolean  @default(true)
+
+   examId String
+   Exam   Exam   @relation(fields: [examId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+   number  Int
+   text    String?
+   correct Int
+   value   Float
+
+   CorrectionQuestions CorrectionQuestion[]
+
+   @@unique([examId, number])
+   @@index([examId])
+}
+
+model CorrectionExam {
+   id        String   @id @default(uuid())
+   createdAt DateTime @default(now())
+   updatedAt DateTime @updatedAt
+   isActive  Boolean  @default(true)
+
+   datetime DateTime         @default(now())
+   filePath String
+   attempt  Int              @default(1)
+   score    Float?
+   status   CorrectionStatus @default(pending)
+   metadata Json?
+
+   examId String
+   Exam   Exam   @relation(fields: [examId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+   studentId String
+   Student   Student @relation(fields: [studentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+   gradedByAgentId String?
+   GradedBy        Agent?  @relation(fields: [gradedByAgentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+   Items CorrectionQuestion[]
+
+   @@unique([examId, studentId, attempt])
+   @@index([examId])
+   @@index([studentId])
+   @@index([gradedByAgentId])
+}
+
+model CorrectionQuestion {
+   id        String   @id @default(uuid())
+   createdAt DateTime @default(now())
+   updatedAt DateTime @updatedAt
+   isActive  Boolean  @default(true)
+
+   correctionId String
+   Correction   CorrectionExam @relation(fields: [correctionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+   questionId String
+   Question   Question @relation(fields: [questionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+   selected  Int?
+   isCorrect Boolean?
+
+   @@unique([correctionId, questionId])
+   @@index([correctionId])
+   @@index([questionId])
 }
