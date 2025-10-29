@@ -6,13 +6,18 @@ import { PassportModule } from '@nestjs/passport';
 import { PrismaModule } from '../prisma/prisma.module';
 import { UserModule } from '../user/user.module';
 import authConfig, { validateAuthEnv } from './config/auth.config';
+import googleAuthConfig from './config/google.config';
 
 import { QueueModule } from '../queue/queue.module';
+import { GoogleAuthController } from './controllers/google-auth.controller';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AuthResolver } from './resolvers/auth.resolver';
 import { MeResolver } from './resolvers/me.resolver';
+import { GoogleAuthService } from './services/google/google-auth.service';
+import { GoogleStateService } from './services/google/google-state.service';
 import { LoginService } from './services/login/login.service';
 import { MeService } from './services/me/me-service/me-service.service';
+import { IssueTokenService } from './services/token/issue-token.service';
 import { JwtStrategyWs } from './strategies/jwt-graphql-ws.strategy';
 import { JwtStrategy } from './strategies/jwt-graphql.strategy';
 
@@ -23,9 +28,10 @@ import { JwtStrategy } from './strategies/jwt-graphql.strategy';
       ConfigModule.forRoot({
          isGlobal: true,
          cache: true,
-         load: [authConfig],
+         load: [authConfig, googleAuthConfig],
          validate: validateAuthEnv,
       }),
+      ConfigModule.forFeature(googleAuthConfig),
 
       JwtModule.registerAsync({
          imports: [ConfigModule],
@@ -42,6 +48,7 @@ import { JwtStrategy } from './strategies/jwt-graphql.strategy';
       UserModule,
       QueueModule,
    ],
+   controllers: [GoogleAuthController],
    providers: [
       { provide: 'APP_GUARD', useClass: JwtAuthGuard },
       JwtStrategy,
@@ -53,6 +60,9 @@ import { JwtStrategy } from './strategies/jwt-graphql.strategy';
       // Services
       MeService,
       LoginService,
+      GoogleAuthService,
+      GoogleStateService,
+      IssueTokenService,
       MeResolver,
    ],
    exports: [MeService, JwtModule],

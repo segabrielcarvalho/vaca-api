@@ -31,6 +31,9 @@ export class JwtStrategyWs extends PassportStrategy(
          where: { id: payload.sub },
       });
       if (!user) return false;
-      return user;
+
+      const { encryptedPassword, ...safeUser } = user;
+
+      return safeUser as ICurrentUser;
    }
 }

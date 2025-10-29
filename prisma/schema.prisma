@@ -25,17 +25,17 @@ enum GenderEnum {
 }
 
 model User {
-   id        String   @id @default(uuid())
-   createdAt DateTime @default(now())
-   updatedAt DateTime @updatedAt
-   isActive  Boolean  @default(true)
-   isTest    Boolean  @default(false)
+   id            String   @id @default(uuid())
+   createdAt     DateTime @default(now())
+   updatedAt     DateTime @updatedAt
+   isActive      Boolean  @default(true)
+   isTest        Boolean  @default(false)
+   verifiedEmail Boolean  @default(false)
 
    name              String
    email             String    @unique
    encryptedPassword String?
    lastSession       DateTime?
-   verifiedEmail     Boolean   @default(false)
 
    role   RoleEnum
    gender GenderEnum?

@@ -26,7 +26,11 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt-graphql') {
       const user = await this.prisma.user.findUnique({
          where: { id: payload.sub },
       });
+
       if (!user) return false;
-      return user;
+
+      const { encryptedPassword, ...safeUser } = user;
+
+      return safeUser as ICurrentUser;
    }
 }
