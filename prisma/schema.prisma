@@ -1,0 +1,813 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../.prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+generator nestgraphql {
+  provider             = "prisma-nestjs-graphql"
+  output               = "../src/modules/graphql/@generated"
+  prismaClientImport   = "../../../../../.prisma/client"
+  decorate_1_type      = "*WhereInput"
+  decorate_1_field     = "AND"
+  decorate_1_from      = "class-transformer"
+  decorate_1_name      = "Type"
+  decorate_1_arguments = "['() => {propertyType.0}']"
+  decorate_2_type      = "*WhereInput"
+  decorate_2_field     = "OR"
+  decorate_2_from      = "class-transformer"
+  decorate_2_name      = "Type"
+  decorate_2_arguments = "['() => {propertyType.0}']"
+  decorate_3_type      = "*WhereInput"
+  decorate_3_field     = "NOT"
+  decorate_3_from      = "class-transformer"
+  decorate_3_name      = "Type"
+  decorate_3_arguments = "['() => {propertyType.0}']"
+  decorate_4_type      = "FindMany*Args"
+  decorate_4_field     = "orderBy"
+  decorate_4_from      = "class-transformer"
+  decorate_4_name      = "Type"
+  decorate_4_arguments = "['() => {propertyType.0}']"
+}
+
+enum RoleEnum {
+  admin
+  user
+}
+
+enum GenderEnum {
+  male
+  female
+  other
+}
+
+enum AclScopeType {
+  school
+  course
+  klass
+}
+
+enum AclMembershipPermissionEffect {
+  allow
+  deny
+}
+
+enum CorrectionStatus {
+  pending
+  graded
+  returned
+}
+
+enum OmrTemplateVersionStatus {
+  draft
+  published
+  archived
+}
+
+enum OmrTemplatePdfGenerationStatus {
+  queued
+  processing
+  ready
+  failed
+}
+
+enum OmrTemplatePdfGenerationTrigger {
+  create_auto
+  manual
+}
+
+enum CorrectionSessionStatus {
+  running
+  completed
+  cancelled
+}
+
+enum CorrectionCaptureStatus {
+  queued
+  processing
+  graded
+  needs_review
+  error
+}
+
+enum CorrectionCaptureReviewReason {
+  qr_missing
+  qr_invalid
+  qr_signature_invalid
+  registration_invalid
+  registration_ambiguous
+  answer_ambiguous
+  omr_error
+  manual_review
+}
+
+enum AuthChannelEnum {
+  web_admin
+  expo_mobile
+}
+
+enum AuthChallengeTypeEnum {
+  invite_email
+  login_email
+}
+
+enum AuthAuditEventTypeEnum {
+  invite_created
+  invite_sent
+  invite_started
+  invite_verified
+  invite_completed
+  invite_revoked
+  login_email_started
+  login_email_verified
+  login_email_magic_consumed
+  session_created
+  session_refreshed
+  session_revoked
+  logout
+}
+
+model User {
+  id            String   @id @default(uuid())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  isActive      Boolean  @default(true)
+  isTest        Boolean  @default(false)
+  verifiedEmail Boolean  @default(false)
+
+  email       String    @unique
+  lastSession DateTime?
+
+  role   RoleEnum
+  gender GenderEnum?
+
+  Profile UserProfile?
+
+  Student Student?
+  Agent   Agent?
+
+  InvitesSent AuthInvite[]     @relation("AuthInviteInvitedBy")
+  Challenges  AuthChallenge[]
+  Devices     AuthDevice[]
+  Sessions    AuthSession[]
+  AuditEvents AuthAuditEvent[]
+  AuthInvites AuthInvite[]
+}
+
+model UserProfile {
+  id String @id @default(uuid())
+
+  userId String @unique
+  User   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  name      String
+  photoPath String?
+  phoneE164 String
+
+  timezone String
+  locale   String
+
+  notificationPrefsJson Json
+
+  onboardingCompletedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([phoneE164])
+}
+
+model AuthInvite {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  email     String
+  role      RoleEnum @default(user)
+  tokenHash String   @unique
+  metadata  Json?
+
+  expiresAt  DateTime
+  acceptedAt DateTime?
+  revokedAt  DateTime?
+
+  invitedByUserId String?
+  InvitedBy       User?   @relation("AuthInviteInvitedBy", fields: [invitedByUserId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  userId String?
+  User   User?   @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  Challenges AuthChallenge[]
+
+  @@index([email])
+  @@index([expiresAt])
+  @@index([userId])
+  @@index([invitedByUserId])
+}
+
+model AuthChallenge {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  type    AuthChallengeTypeEnum
+  channel AuthChannelEnum
+
+  email     String?
+  codeHash  String?
+  tokenHash String?
+
+  payload Json?
+
+  attempts    Int @default(0)
+  maxAttempts Int @default(5)
+
+  expiresAt  DateTime
+  consumedAt DateTime?
+
+  userId String?
+  User   User?   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  inviteId String?
+  Invite   AuthInvite? @relation(fields: [inviteId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@index([type, expiresAt])
+  @@index([channel, expiresAt])
+  @@index([email])
+  @@index([userId])
+  @@index([inviteId])
+}
+
+model AuthDevice {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  User   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  channel AuthChannelEnum
+
+  deviceId   String
+  deviceName String?
+
+  lastSeenAt DateTime?
+
+  Sessions AuthSession[]
+
+  @@unique([userId, channel, deviceId])
+  @@index([userId, deviceId])
+}
+
+model AuthSession {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  User   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  channel AuthChannelEnum
+
+  refreshTokenHash String @unique
+
+  expiresAt DateTime
+  revokedAt DateTime?
+
+  authDeviceId String?
+  Device       AuthDevice? @relation(fields: [authDeviceId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  selectedSchoolId String?
+
+  ip        String?
+  userAgent String?
+
+  rotatedFromSessionId String?
+  RotatedFrom          AuthSession?  @relation("AuthSessionRotation", fields: [rotatedFromSessionId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  RotatedTo            AuthSession[] @relation("AuthSessionRotation")
+
+  @@index([userId, expiresAt])
+  @@index([authDeviceId])
+}
+
+model AuthAuditEvent {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  userId String?
+  User   User?   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  eventType AuthAuditEventTypeEnum
+  channel   AuthChannelEnum?
+
+  ip        String?
+  userAgent String?
+  metadata  Json?
+
+  @@index([userId, createdAt])
+  @@index([eventType, createdAt])
+}
+
+model Student {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  registrationNumber String @unique
+  userId             String @unique
+  User               User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  Enrollments StudentKlass[]
+  Corrections CorrectionExam[]
+  Captures    CorrectionCapture[]
+}
+
+model Agent {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String @unique
+  User   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  Corrections                 CorrectionExam[]
+  Memberships                 AclMembership[]
+  CreatedOmrTemplates         OmrTemplate[]        @relation("OmrTemplateCreatedBy")
+  CreatedOmrTemplateVersions  OmrTemplateVersion[] @relation("OmrTemplateVersionCreatedBy")
+  TriggeredTemplatePdfAssets  OmrTemplateVersionPdfAsset[] @relation("OmrTemplatePdfAssetTriggeredBy")
+  StartedCorrectionSessions   CorrectionSession[]  @relation("CorrectionSessionStartedBy")
+  SubmittedCorrectionCaptures CorrectionCapture[]  @relation("CorrectionCaptureSubmittedBy")
+  ResolvedCorrectionCaptures  CorrectionCapture[]  @relation("CorrectionCaptureResolvedBy")
+}
+
+model AclPermission {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  code String @unique
+
+  Roles               AclRolePermission[]
+  MembershipOverrides AclMembershipPermissionOverride[]
+
+  @@index([code])
+}
+
+model AclRole {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  code      String       @unique
+  scopeType AclScopeType
+  rank      Int
+  isSystem  Boolean      @default(true)
+
+  RolePermissions AclRolePermission[]
+  Memberships     AclMembership[]
+
+  @@index([scopeType, rank])
+}
+
+model AclRolePermission {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  roleId String
+  Role   AclRole @relation(fields: [roleId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  permissionId String
+  Permission   AclPermission @relation(fields: [permissionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+}
+
+model School {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isActive  Boolean  @default(true)
+
+  name            String
+  institutionCode String  @unique
+  description     String?
+  bannerPath      String?
+  logoFullPath    String?
+  logoMarkPath    String?
+  faviconPath     String?
+  primaryColor    String?
+  secondaryColor  String?
+
+  Courses     Course[]
+  Memberships AclMembership[]
+}
+
+model Course {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isActive  Boolean  @default(true)
+
+  name           String
+  description    String?
+  bannerPath     String?
+  logoFullPath   String?
+  logoMarkPath   String?
+  faviconPath    String?
+  primaryColor   String?
+  secondaryColor String?
+
+  schoolId String
+  School   School @relation(fields: [schoolId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  Klasses      Klass[]
+  OmrTemplates OmrTemplate[]
+  Memberships  AclMembership[]
+
+  @@unique([schoolId, name])
+  @@index([schoolId])
+}
+
+model Klass {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isActive  Boolean  @default(true)
+
+  name        String
+  description String?
+  bannerPath  String?
+
+  courseId String
+  Course   Course @relation(fields: [courseId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  Exams       Exam[]
+  Enrollments StudentKlass[]
+  Memberships AclMembership[]
+
+  @@unique([courseId, name])
+  @@index([courseId])
+}
+
+model AclMembership {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  agentId String
+  Agent   Agent  @relation(fields: [agentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  roleId String
+  Role   AclRole @relation(fields: [roleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  schoolId String?
+  School   School? @relation(fields: [schoolId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  courseId String?
+  Course   Course? @relation(fields: [courseId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  klassId String?
+  Klass   Klass?  @relation(fields: [klassId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  PermissionOverrides AclMembershipPermissionOverride[]
+
+  @@unique([schoolId, agentId])
+  @@unique([courseId, agentId])
+  @@unique([klassId, agentId])
+  @@index([agentId])
+  @@index([roleId])
+  @@index([schoolId])
+  @@index([courseId])
+  @@index([klassId])
+}
+
+model AclMembershipPermissionOverride {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  membershipId String
+  Membership   AclMembership @relation(fields: [membershipId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  permissionId String
+  Permission   AclPermission @relation(fields: [permissionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  effect AclMembershipPermissionEffect
+
+  @@unique([membershipId, permissionId])
+  @@index([membershipId])
+  @@index([permissionId])
+}
+
+model StudentKlass {
+  id String @id @default(uuid())
+
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+
+  studentId String
+  Student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  klassId String
+  Klass   Klass  @relation(fields: [klassId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([studentId, klassId, startedAt])
+  @@index([klassId])
+  @@index([studentId])
+}
+
+model Exam {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isActive  Boolean  @default(true)
+
+  title       String
+  description String?
+  filePath    String?
+
+  templateVersionId String?
+  TemplateVersion   OmrTemplateVersion? @relation(fields: [templateVersionId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  klassId String
+  Klass   Klass  @relation(fields: [klassId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  Questions          Question[]
+  Corrections        CorrectionExam[]
+  CorrectionSessions CorrectionSession[]
+  Captures           CorrectionCapture[]
+
+  @@unique([klassId, title])
+  @@index([klassId])
+  @@index([templateVersionId])
+}
+
+model Question {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isActive  Boolean  @default(true)
+
+  examId String
+  Exam   Exam   @relation(fields: [examId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  number  Int
+  text    String?
+  correct Int
+  value   Float
+
+  CorrectionQuestions CorrectionQuestion[]
+
+  @@unique([examId, number])
+  @@index([examId])
+}
+
+model CorrectionExam {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isActive  Boolean  @default(true)
+
+  datetime DateTime         @default(now())
+  filePath String
+  attempt  Int              @default(1)
+  score    Float?
+  status   CorrectionStatus @default(pending)
+  metadata Json?
+
+  examId String
+  Exam   Exam   @relation(fields: [examId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  studentId String
+  Student   Student @relation(fields: [studentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  gradedByAgentId String?
+  GradedBy        Agent?  @relation(fields: [gradedByAgentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  Items   CorrectionQuestion[]
+  Capture CorrectionCapture?
+
+  @@unique([examId, studentId, attempt])
+  @@index([examId])
+  @@index([studentId])
+  @@index([gradedByAgentId])
+}
+
+model OmrTemplate {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isActive  Boolean  @default(true)
+
+  name        String
+  description String?
+
+  courseId String
+  Course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  createdByAgentId String?
+  CreatedBy        Agent?  @relation("OmrTemplateCreatedBy", fields: [createdByAgentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  publishedVersionId String?
+  PublishedVersion   OmrTemplateVersion? @relation("OmrTemplatePublishedVersion", fields: [publishedVersionId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  Versions OmrTemplateVersion[]
+
+  @@unique([courseId, name])
+  @@index([courseId])
+  @@index([createdByAgentId])
+  @@index([publishedVersionId])
+}
+
+model OmrTemplateVersion {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isActive  Boolean  @default(true)
+
+  templateId String
+  Template   OmrTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  version Int
+  status  OmrTemplateVersionStatus @default(draft)
+
+  layoutJson           Json
+  compiledGeometryJson Json
+  pdfPath              String?
+  previewImagePath     String?
+  pdfGenerationStatus  OmrTemplatePdfGenerationStatus @default(queued)
+  pdfGenerationError   String?
+  pdfGenerationUpdatedAt DateTime?
+  publishedAt          DateTime?
+
+  createdByAgentId String?
+  CreatedBy        Agent?  @relation("OmrTemplateVersionCreatedBy", fields: [createdByAgentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  PublishedByTemplates OmrTemplate[] @relation("OmrTemplatePublishedVersion")
+  Exams                Exam[]
+  PdfAssets            OmrTemplateVersionPdfAsset[]
+
+  @@unique([templateId, version])
+  @@index([templateId, status])
+  @@index([createdByAgentId])
+}
+
+model OmrTemplateVersionPdfAsset {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isActive  Boolean  @default(true)
+
+  templateVersionId String
+  TemplateVersion   OmrTemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  generationIndex Int
+  status          OmrTemplatePdfGenerationStatus
+  trigger         OmrTemplatePdfGenerationTrigger
+  pdfPath         String?
+  previewImagePath String?
+  errorMessage    String?
+  startedAt       DateTime?
+  finishedAt      DateTime?
+  qrPayloadJson   Json?
+
+  triggeredByAgentId String?
+  TriggeredBy        Agent?  @relation("OmrTemplatePdfAssetTriggeredBy", fields: [triggeredByAgentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@unique([templateVersionId, generationIndex])
+  @@index([templateVersionId, createdAt])
+  @@index([triggeredByAgentId])
+}
+
+model CorrectionSession {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  status     CorrectionSessionStatus @default(running)
+  startedAt  DateTime                @default(now())
+  finishedAt DateTime?
+
+  startedByAgentId String?
+  StartedBy        Agent?  @relation("CorrectionSessionStartedBy", fields: [startedByAgentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  examId String
+  Exam   Exam   @relation(fields: [examId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  totalCaptures       Int    @default(0)
+  processedCaptures   Int    @default(0)
+  gradedCaptures      Int    @default(0)
+  needsReviewCaptures Int    @default(0)
+  errorCaptures       Int    @default(0)
+  qrInvalidCaptures   Int    @default(0)
+  avgProcessingMs     Float?
+  p95ProcessingMs     Float?
+  manualReviewRate    Float?
+  qrInvalidRate       Float?
+  throughputPerMinute Float?
+
+  Captures CorrectionCapture[]
+  Events   CorrectionSessionEvent[]
+
+  @@index([examId])
+  @@index([status])
+  @@index([startedByAgentId])
+}
+
+model CorrectionCapture {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessionId String
+  Session   CorrectionSession @relation(fields: [sessionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  examId String
+  Exam   Exam   @relation(fields: [examId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  studentId String?
+  Student   Student? @relation(fields: [studentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  submittedByAgentId String?
+  SubmittedBy        Agent?  @relation("CorrectionCaptureSubmittedBy", fields: [submittedByAgentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  status        CorrectionCaptureStatus         @default(queued)
+  reviewReasons CorrectionCaptureReviewReason[]
+  reviewNotes   String?
+
+  resolvedByAgentId String?
+  ResolvedBy        Agent?    @relation("CorrectionCaptureResolvedBy", fields: [resolvedByAgentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  resolvedAt        DateTime?
+
+  originalImagePath  String
+  rectifiedImagePath String?
+  overlayImagePath   String?
+  artifactsPurgedAt  DateTime?
+
+  engineVersion  String?
+  threshold      Float?
+  delta          Float?
+  queueLatencyMs Int?
+  processingMs   Int?
+
+  registrationNumber String?
+  detectionPayload   Json?
+  omrPayload         Json?
+  errorMessage       String?
+
+  correctionExamId String?         @unique
+  CorrectionExam   CorrectionExam? @relation(fields: [correctionExamId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  Events CorrectionSessionEvent[]
+
+  @@index([sessionId])
+  @@index([examId])
+  @@index([studentId])
+  @@index([submittedByAgentId])
+  @@index([resolvedByAgentId])
+  @@index([status])
+}
+
+model CorrectionSessionEvent {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  sessionId String
+  Session   CorrectionSession @relation(fields: [sessionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  captureId String?
+  Capture   CorrectionCapture? @relation(fields: [captureId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  stage      String
+  durationMs Int?
+  payload    Json?
+
+  @@index([sessionId, createdAt])
+  @@index([captureId])
+}
+
+model CorrectionQuestion {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  isActive  Boolean  @default(true)
+
+  correctionId String
+  Correction   CorrectionExam @relation(fields: [correctionId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  questionId String
+  Question   Question @relation(fields: [questionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  selected  Int?
+  isCorrect Boolean?
+
+  @@unique([correctionId, questionId])
+  @@index([correctionId])
+  @@index([questionId])
+}

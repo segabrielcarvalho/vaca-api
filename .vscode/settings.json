@@ -1,0 +1,69 @@
+{
+   "cSpell.language": "pt,pt-BR,en,en-US,en-GB",
+   "editor.tabSize": 3,
+   "editor.defaultFormatter": "esbenp.prettier-vscode",
+   "editor.formatOnSave": true,
+   "editor.codeActionsOnSave": {
+      "source.fixAll": "never",
+      "source.fixAll.eslint": "never",
+      "source.organizeImports": "explicit"
+   },
+   "material-icon-theme.activeIconPack": "nest",
+   "material-icon-theme.folders.associations": {
+      "modules/auth": "",
+      "modules/email": "",
+      "modules/prisma": "",
+      "modules/reports": ""
+   },
+   "typescript.preferences.importModuleSpecifier": "relative",
+   "[dotenv]": {
+      "editor.defaultFormatter": "foxundermoon.shell-format"
+   },
+   "[dockerfile]": {
+      "editor.defaultFormatter": "foxundermoon.shell-format"
+   },
+   "[shellscript]": {
+      "editor.defaultFormatter": "foxundermoon.shell-format"
+   },
+   "[ignore]": {
+      "editor.defaultFormatter": "foxundermoon.shell-format"
+   },
+   "[typescript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode"
+   },
+   "[prisma]": {
+      "editor.defaultFormatter": "Prisma.prisma"
+   },
+   "cSpell.words": [
+      "aaguid",
+      "ALNUM",
+      "bullmq",
+      "chunker",
+      "csrf",
+      "datasource",
+      "dqbd",
+      "klass",
+      "Klasses",
+      "Meente",
+      "mentee",
+      "mentees",
+      "Mentees",
+      "nestgraphql",
+      "nestjs",
+      "openai",
+      "OPENAI",
+      "Pkce",
+      "postgresql",
+      "presigner",
+      "qdrant",
+      "QLISO",
+      "QLJSON",
+      "sendgrid",
+      "tiktoken",
+      "upserted",
+      "uuid",
+      "uuidv",
+      "whatsapp",
+      "wsse"
+   ]
+}
