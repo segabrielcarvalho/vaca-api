@@ -1,0 +1,2 @@
+export const REDIS_QUEUE_CLIENT = 'REDIS_QUEUE_CLIENT';
+export const REDIS_PUBSUB = 'REDIS_PUBSUB';
