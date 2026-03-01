@@ -1,0 +1,26 @@
+<div
+   style='background:#f6f7fb;padding:32px 12px;font-family:Arial,Helvetica,sans-serif;color:#111827;'
+>
+   <div
+      style='max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;padding:28px 26px;border:1px solid #e5e7eb;'
+   >
+      <h1 style='font-size:18px;margin:0 0 12px 0;'>Confirme seu convite</h1>
+      <p style='margin:0 0 16px 0;font-size:14px;color:#4b5563;'>Ola</p>
+      <p style='margin:0 0 12px 0;'>Seu codigo de confirmacao:
+         <strong>{{code}}</strong></p>
+      <p style='margin:0 0 16px 0;'>Voce pode usar o codigo ou clicar no link
+         magico abaixo.</p>
+      <div style='margin:0 0 12px 0;'>
+         <a
+            href='{{verifyLink}}'
+            style='display:inline-block;background:#111827;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600;font-size:14px;'
+         >
+            Confirmar convite
+         </a>
+      </div>
+      <p style='margin:12px 0 0 0;font-size:12px;color:#9ca3af;'>Codigo valido
+         por
+         {{challengeTtlMinutes}}
+         minutos.</p>
+   </div>
+</div>
