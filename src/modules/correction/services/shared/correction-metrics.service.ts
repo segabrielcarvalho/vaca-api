@@ -25,42 +25,43 @@ export class CorrectionMetricsService {
       ]);
 
       const totalCaptures = captures.length;
-      const gradedCaptures = captures.filter((item) => item.status === 'graded').length;
+      const gradedCaptures = captures.filter(
+         (item) => item.status === 'graded',
+      ).length;
       const needsReviewCaptures = captures.filter(
          (item) => item.status === 'needs_review',
       ).length;
-      const errorCaptures = captures.filter((item) => item.status === 'error').length;
+      const errorCaptures = captures.filter(
+         (item) => item.status === 'error',
+      ).length;
       const processedCaptures = captures.filter(
          (item) => item.status !== 'queued' && item.status !== 'processing',
-      ).length;
-      const qrInvalidCaptures = captures.filter((item) =>
-         item.reviewReasons.some((reason) =>
-            [
-               'qr_missing',
-               'qr_invalid',
-               'qr_signature_invalid',
-            ].includes(reason),
-         ),
       ).length;
 
       const durations = captures
          .map((item) => item.processingMs)
-         .filter((value): value is number => typeof value === 'number' && value >= 0)
+         .filter(
+            (value): value is number => typeof value === 'number' && value >= 0,
+         )
          .sort((a, b) => a - b);
 
       const avgProcessingMs =
          durations.length > 0
-            ? durations.reduce((acc, value) => acc + value, 0) / durations.length
+            ? durations.reduce((acc, value) => acc + value, 0) /
+              durations.length
             : null;
 
       const p95ProcessingMs =
          durations.length > 0
-            ? durations[Math.min(durations.length - 1, Math.floor(durations.length * 0.95))]
+            ? durations[
+                 Math.min(
+                    durations.length - 1,
+                    Math.floor(durations.length * 0.95),
+                 )
+              ]
             : null;
       const manualReviewRate =
          processedCaptures > 0 ? needsReviewCaptures / processedCaptures : null;
-      const qrInvalidRate =
-         processedCaptures > 0 ? qrInvalidCaptures / processedCaptures : null;
       const durationMinutes =
          session && session.startedAt
             ? Math.max(
@@ -83,11 +84,9 @@ export class CorrectionMetricsService {
             gradedCaptures,
             needsReviewCaptures,
             errorCaptures,
-            qrInvalidCaptures,
             avgProcessingMs,
             p95ProcessingMs,
             manualReviewRate,
-            qrInvalidRate,
             throughputPerMinute,
          },
       });

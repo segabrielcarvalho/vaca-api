@@ -1,5 +1,13 @@
 import { Field, InputType, Int } from '@nestjs/graphql';
-import { IsInt, IsNotEmpty, IsOptional, IsString, Max, Min } from 'class-validator';
+import {
+   IsBoolean,
+   IsInt,
+   IsNotEmpty,
+   IsOptional,
+   IsString,
+   Max,
+   Min,
+} from 'class-validator';
 
 @InputType()
 export class ListKlassExamsInput {
@@ -20,4 +28,14 @@ export class ListKlassExamsInput {
    @Min(1)
    @Max(100)
    take?: number;
+
+   @Field(() => Boolean, { nullable: true })
+   @IsOptional()
+   @IsBoolean()
+   isActive?: boolean;
+
+   @Field({ nullable: true })
+   @IsOptional()
+   @IsString()
+   search?: string;
 }

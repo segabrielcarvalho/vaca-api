@@ -21,10 +21,19 @@ export class GetExamService {
       return this.prisma.exam.findUniqueOrThrow({
          where: { id: exam.id },
          include: {
+            Klass: {
+               include: {
+                  Course: true,
+               },
+            },
             Questions: {
                orderBy: { number: 'asc' },
             },
-            TemplateVersion: true,
+            TemplateVersion: {
+               include: {
+                  Template: true,
+               },
+            },
          },
       });
    }

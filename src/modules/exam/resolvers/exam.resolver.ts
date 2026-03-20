@@ -5,13 +5,17 @@ import { ScopedAuthorized } from '../../auth/decorators/scoped-authorized.decora
 import { AuthCurrentUser } from '../../auth/services/auth-context.service';
 import { Exam } from '../../graphql/@generated/exam/exam.model';
 import { CreateExamInput } from '../inputs/create-exam.input';
+import { DeleteExamInput } from '../inputs/delete-exam.input';
 import { GetExamInput } from '../inputs/get-exam.input';
 import { ListKlassExamsInput } from '../inputs/list-klass-exams.input';
+import { ReactivateExamInput } from '../inputs/reactivate-exam.input';
 import { UpdateExamInput } from '../inputs/update-exam.input';
 import { ExamListObject } from '../objects/exam-list.object';
 import { CreateExamService } from '../services/create/create-exam.service';
+import { DeleteExamService } from '../services/delete/delete-exam.service';
 import { GetExamService } from '../services/get/get-exam.service';
 import { ListKlassExamsService } from '../services/list/list-klass-exams.service';
+import { ReactivateExamService } from '../services/reactivate/reactivate-exam.service';
 import { UpdateExamService } from '../services/update/update-exam.service';
 
 @Resolver(() => Exam)
@@ -21,6 +25,8 @@ export class ExamResolver {
       private readonly getExamService: GetExamService,
       private readonly createExamService: CreateExamService,
       private readonly updateExamService: UpdateExamService,
+      private readonly deleteExamService: DeleteExamService,
+      private readonly reactivateExamService: ReactivateExamService,
    ) {}
 
    @ScopedAuthorized({
@@ -63,5 +69,21 @@ export class ExamResolver {
       @CurrentUser() user: AuthCurrentUser,
    ) {
       return this.updateExamService.run(input, user);
+   }
+
+   @Mutation(() => Exam)
+   async deleteExam(
+      @Args('input') input: DeleteExamInput,
+      @CurrentUser() user: AuthCurrentUser,
+   ) {
+      return this.deleteExamService.run(input, user);
+   }
+
+   @Mutation(() => Exam)
+   async reactivateExam(
+      @Args('input') input: ReactivateExamInput,
+      @CurrentUser() user: AuthCurrentUser,
+   ) {
+      return this.reactivateExamService.run(input, user);
    }
 }

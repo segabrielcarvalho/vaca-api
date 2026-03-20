@@ -18,7 +18,19 @@ export class CorrectionAccessService {
    ) {
       const exam = await this.prisma.exam.findUnique({
          where: { id: examId },
-         select: { id: true, klassId: true },
+         select: {
+            id: true,
+            klassId: true,
+            Klass: {
+               select: {
+                  Course: {
+                     select: {
+                        schoolId: true,
+                     },
+                  },
+               },
+            },
+         },
       });
 
       if (!exam) {

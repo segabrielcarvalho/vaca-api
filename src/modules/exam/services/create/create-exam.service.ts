@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+   BadRequestException,
+   Injectable,
+   NotFoundException,
+} from '@nestjs/common';
 import { AuthCurrentUser } from '../../../auth/services/auth-context.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { CreateExamInput } from '../../inputs/create-exam.input';
@@ -30,6 +34,8 @@ export class CreateExamService {
             select: {
                id: true,
                status: true,
+               layoutJson: true,
+               compiledGeometryJson: true,
                Template: {
                   select: {
                      courseId: true,
@@ -59,6 +65,12 @@ export class CreateExamService {
          );
       }
 
+      this.rules.assertTemplateQuestionCountMatchesAnswerKey({
+         answerKeyLength: input.answerKey.length,
+         layoutJson: templateVersion.layoutJson,
+         compiledGeometryJson: templateVersion.compiledGeometryJson,
+      });
+
       const questionValue = input.questionValue ?? 1;
 
       const exam = await this.prisma.$transaction(async (tx) => {
@@ -86,10 +98,19 @@ export class CreateExamService {
       return this.prisma.exam.findUniqueOrThrow({
          where: { id: exam.id },
          include: {
+            Klass: {
+               include: {
+                  Course: true,
+               },
+            },
             Questions: {
                orderBy: { number: 'asc' },
             },
-            TemplateVersion: true,
+            TemplateVersion: {
+               include: {
+                  Template: true,
+               },
+            },
          },
       });
    }

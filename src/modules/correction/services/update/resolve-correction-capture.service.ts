@@ -38,7 +38,8 @@ export class ResolveCorrectionCaptureService {
          );
       }
 
-      const resolvedByAgentId = await this.scopedAccessService.getAgentIdByUserId(user.id);
+      const resolvedByAgentId =
+         await this.scopedAccessService.getAgentIdByUserId(user.id);
 
       const updated = await this.prisma.correctionCapture.update({
          where: { id: captureRef.id },
