@@ -1,10 +1,13 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { Job } from 'bullmq';
-import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { ConfigType } from '@nestjs/config';
-import { CorrectionCaptureReviewReason, Prisma } from '../../../../.prisma/client';
+import {
+   CorrectionCaptureReviewReason,
+   Prisma,
+} from '../../../../.prisma/client';
 import correctionConfig from '../config/correction.config';
+import { MyLogger } from '../../logger/my-logger.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QUEUES } from '../../queue/constants/queue.constants';
 import { STORAGE_PROVIDER } from '../../storage/providers';
@@ -17,10 +20,6 @@ import { CorrectionMetricsService } from '../services/shared/correction-metrics.
 type OmrProcessResponse = {
    success?: boolean;
    engineVersion?: string;
-   qr?: {
-      data?: string;
-      validSignature?: boolean;
-   };
    registration?: {
       value?: string | null;
       status?: string;
@@ -46,10 +45,9 @@ type OmrProcessResponse = {
 @Processor(QUEUES.CORRECTION_OMR)
 @Injectable()
 export class CorrectionOmrProcessor extends WorkerHost {
-   private readonly logger = new Logger(CorrectionOmrProcessor.name);
-
    constructor(
       private readonly prisma: PrismaService,
+      private readonly logger: MyLogger,
       private readonly publisher: CorrectionPublisherService,
       private readonly metrics: CorrectionMetricsService,
       @Inject(STORAGE_PROVIDER)
@@ -58,17 +56,33 @@ export class CorrectionOmrProcessor extends WorkerHost {
       private readonly config: ConfigType<typeof correctionConfig>,
    ) {
       super();
+      this.logger.setContext(CorrectionOmrProcessor.name);
+      if (this.config.debugTrace) {
+         this.logger.setLogLevels(['log', 'error', 'warn', 'debug', 'verbose']);
+      }
    }
 
    async process(job: Job<CorrectionJobPayload>): Promise<void> {
       const startedAtMs = Date.now();
       const { captureId, sessionId, threshold, delta } = job.data;
+      this.trace('correction_omr.job_started', {
+         jobId: job.id,
+         captureId,
+         sessionId,
+         threshold,
+         delta,
+      });
 
       const capture = await this.prisma.correctionCapture.findUnique({
          where: { id: captureId },
          include: {
             Exam: {
                include: {
+                  Klass: {
+                     include: {
+                        Course: true,
+                     },
+                  },
                   Questions: {
                      orderBy: { number: 'asc' },
                   },
@@ -79,10 +93,18 @@ export class CorrectionOmrProcessor extends WorkerHost {
       });
 
       if (!capture) {
+         this.trace('correction_omr.capture_not_found', {
+            jobId: job.id,
+            captureId,
+            sessionId,
+         });
          return;
       }
 
-      const queueLatencyMs = Math.max(0, Date.now() - capture.createdAt.getTime());
+      const queueLatencyMs = Math.max(
+         0,
+         Date.now() - capture.createdAt.getTime(),
+      );
 
       await this.prisma.correctionCapture.update({
          where: { id: capture.id },
@@ -90,6 +112,13 @@ export class CorrectionOmrProcessor extends WorkerHost {
             status: 'processing',
             queueLatencyMs,
          },
+      });
+
+      this.trace('correction_omr.capture_processing', {
+         jobId: job.id,
+         captureId,
+         sessionId,
+         queueLatencyMs,
       });
 
       await this.publisher.publish({
@@ -118,6 +147,12 @@ export class CorrectionOmrProcessor extends WorkerHost {
          originalBuffer = await this.storage.downloadFileAsBuffer(
             capture.originalImagePath,
          );
+         this.trace('correction_omr.original_downloaded', {
+            jobId: job.id,
+            captureId,
+            sessionId,
+            originalImageBytes: originalBuffer.byteLength,
+         });
       } catch (error) {
          await this.markError({
             captureId,
@@ -131,6 +166,14 @@ export class CorrectionOmrProcessor extends WorkerHost {
 
       let omrResponse: OmrProcessResponse;
       try {
+         this.trace('correction_omr.omr_request_started', {
+            jobId: job.id,
+            captureId,
+            sessionId,
+            threshold,
+            delta,
+            questionCount: capture.Exam.Questions.length,
+         });
          const controller = new AbortController();
          const timeout = setTimeout(() => {
             controller.abort();
@@ -145,6 +188,8 @@ export class CorrectionOmrProcessor extends WorkerHost {
                      'Content-Type': 'application/json',
                   },
                   body: JSON.stringify({
+                     captureId,
+                     sessionId,
                      imageBase64: originalBuffer.toString('base64'),
                      compiledGeometryJson:
                         capture.Exam.TemplateVersion.compiledGeometryJson,
@@ -160,6 +205,19 @@ export class CorrectionOmrProcessor extends WorkerHost {
             }
 
             omrResponse = (await response.json()) as OmrProcessResponse;
+            this.trace('correction_omr.omr_response_received', {
+               jobId: job.id,
+               captureId,
+               sessionId,
+               success: omrResponse.success ?? false,
+               engineVersion: omrResponse.engineVersion ?? 'unknown',
+               registrationStatus: omrResponse.registration?.status ?? null,
+               answersCount: Array.isArray(omrResponse.answers)
+                  ? omrResponse.answers.length
+                  : Array.isArray(omrResponse.answers_numeric)
+                    ? omrResponse.answers_numeric.length
+                    : 0,
+            });
          } finally {
             clearTimeout(timeout);
          }
@@ -174,247 +232,282 @@ export class CorrectionOmrProcessor extends WorkerHost {
          return;
       }
 
-      const detectionPayload = this.toJson({
-         timings: omrResponse.timings ?? null,
-      });
-      const omrPayload = this.toJson(omrResponse);
+      try {
+         const detectionPayload = this.toJson({
+            timings: omrResponse.timings ?? null,
+         });
+         const omrPayload = this.toJson(omrResponse);
 
-      const [rectifiedImagePath, overlayImagePath] = await Promise.all([
-         this.saveBase64Artifact(
-            omrResponse.images?.rectifiedBase64,
-            `corrections/sessions/${sessionId}/rectified`,
-         ),
-         this.saveBase64Artifact(
-            omrResponse.images?.overlayBase64,
-            `corrections/sessions/${sessionId}/overlay`,
-         ),
-      ]);
+         const [rectifiedImagePath, overlayImagePath] = await Promise.all([
+            this.saveBase64Artifact(
+               omrResponse.images?.rectifiedBase64,
+               `corrections/sessions/${sessionId}/rectified`,
+            ),
+            this.saveBase64Artifact(
+               omrResponse.images?.overlayBase64,
+               `corrections/sessions/${sessionId}/overlay`,
+            ),
+         ]);
 
-      if (!omrResponse.success) {
-         await this.markNeedsReview({
+         this.trace('correction_omr.artifacts_processed', {
+            jobId: job.id,
             captureId,
             sessionId,
-            startedAtMs,
-            reason: CorrectionCaptureReviewReason.omr_error,
-            errorMessage:
-               omrResponse.error?.message || 'OMR não conseguiu ler a folha.',
-            rectifiedImagePath,
-            overlayImagePath,
-            detectionPayload,
-            omrPayload,
-         });
-         return;
-      }
-
-      const qrValidation = this.validateQr(
-         omrResponse.qr?.data,
-         this.config.qrHmacSecret,
-      );
-
-      if (!qrValidation.valid) {
-         await this.markNeedsReview({
-            captureId,
-            sessionId,
-            startedAtMs,
-            reason: qrValidation.reason,
-            errorMessage: qrValidation.error,
-            rectifiedImagePath,
-            overlayImagePath,
-            detectionPayload,
-            omrPayload,
-            engineVersion: omrResponse.engineVersion,
-         });
-         return;
-      }
-
-      if (qrValidation.examId && qrValidation.examId !== capture.examId) {
-         await this.markNeedsReview({
-            captureId,
-            sessionId,
-            startedAtMs,
-            reason: CorrectionCaptureReviewReason.qr_invalid,
-            errorMessage: 'QR corresponde a uma prova diferente da sessão.',
-            rectifiedImagePath,
-            overlayImagePath,
-            detectionPayload,
-            omrPayload,
-            engineVersion: omrResponse.engineVersion,
-         });
-         return;
-      }
-
-      const registrationNumber =
-         omrResponse.registration?.value ?? qrValidation.registrationNumber ?? null;
-
-      if (!registrationNumber) {
-         await this.markNeedsReview({
-            captureId,
-            sessionId,
-            startedAtMs,
-            reason: CorrectionCaptureReviewReason.registration_invalid,
-            errorMessage: 'Matrícula não identificada na folha.',
-            rectifiedImagePath,
-            overlayImagePath,
-            detectionPayload,
-            omrPayload,
-            engineVersion: omrResponse.engineVersion,
-         });
-         return;
-      }
-
-      const student = await this.prisma.student.findUnique({
-         where: { registrationNumber },
-         select: { id: true },
-      });
-
-      if (!student) {
-         await this.markNeedsReview({
-            captureId,
-            sessionId,
-            startedAtMs,
-            reason: CorrectionCaptureReviewReason.registration_invalid,
-            errorMessage: 'Matrícula não encontrada na base para esta correção.',
-            rectifiedImagePath,
-            overlayImagePath,
-            detectionPayload,
-            omrPayload,
-            registrationNumber,
-            engineVersion: omrResponse.engineVersion,
-         });
-         return;
-      }
-
-      const answers = this.normalizeAnswers(
-         omrResponse,
-         capture.Exam.Questions.length,
-      );
-
-      if (answers.hasAmbiguity) {
-         await this.markNeedsReview({
-            captureId,
-            sessionId,
-            startedAtMs,
-            reason: CorrectionCaptureReviewReason.answer_ambiguous,
-            errorMessage: 'Folha com ambiguidades de marcação.',
-            rectifiedImagePath,
-            overlayImagePath,
-            detectionPayload,
-            omrPayload,
-            registrationNumber,
-            studentId: student.id,
-            engineVersion: omrResponse.engineVersion,
-         });
-         return;
-      }
-
-      const questionMap = new Map(
-         capture.Exam.Questions.map((question) => [question.number, question]),
-      );
-
-      let score = 0;
-      const correctionItems: Array<{
-         questionId: string;
-         selected: number | null;
-         isCorrect: boolean | null;
-      }> = [];
-
-      for (let number = 1; number <= capture.Exam.Questions.length; number += 1) {
-         const question = questionMap.get(number);
-         if (!question) continue;
-
-         const selected = answers.values[number - 1] ?? null;
-         const isCorrect =
-            selected === null ? null : selected === question.correct;
-
-         if (isCorrect) {
-            score += question.value;
-         }
-
-         correctionItems.push({
-            questionId: question.id,
-            selected,
-            isCorrect,
-         });
-      }
-
-      const attempt =
-         (await this.prisma.correctionExam.count({
-            where: {
-               examId: capture.examId,
-               studentId: student.id,
-            },
-         })) + 1;
-
-      const processingMs = Math.max(0, Date.now() - startedAtMs);
-
-      const correction = await this.prisma.$transaction(async (tx) => {
-         const createdCorrection = await tx.correctionExam.create({
-            data: {
-               examId: capture.examId,
-               studentId: student.id,
-               filePath: capture.originalImagePath,
-               attempt,
-               score,
-               status: 'graded',
-               metadata: {
-                  source: 'omr_v2',
-                  captureId,
-                  omrEngineVersion: omrResponse.engineVersion ?? 'unknown',
-               } as Prisma.InputJsonValue,
-            },
+            hasRectifiedImage: Boolean(rectifiedImagePath),
+            hasOverlayImage: Boolean(overlayImagePath),
          });
 
-         await tx.correctionQuestion.createMany({
-            data: correctionItems.map((item) => ({
-               correctionId: createdCorrection.id,
-               questionId: item.questionId,
-               selected: item.selected,
-               isCorrect: item.isCorrect,
-            })),
-         });
-
-         await tx.correctionCapture.update({
-            where: { id: capture.id },
-            data: {
-               status: 'graded',
-               reviewReasons: [],
-               reviewNotes: null,
-               errorMessage: null,
-               correctionExamId: createdCorrection.id,
-               studentId: student.id,
-               registrationNumber,
-               engineVersion: omrResponse.engineVersion ?? null,
-               processingMs,
+         if (!omrResponse.success) {
+            await this.markNeedsReview({
+               captureId,
+               sessionId,
+               startedAtMs,
+               reason: CorrectionCaptureReviewReason.omr_error,
+               errorMessage:
+                  omrResponse.error?.message ||
+                  'OMR não conseguiu ler a folha.',
                rectifiedImagePath,
                overlayImagePath,
                detectionPayload,
                omrPayload,
+            });
+            return;
+         }
+
+         const registrationStatus = (omrResponse.registration?.status || '')
+            .trim()
+            .toLowerCase();
+         if (registrationStatus === 'ambiguous') {
+            await this.markNeedsReview({
+               captureId,
+               sessionId,
+               startedAtMs,
+               reason: CorrectionCaptureReviewReason.registration_ambiguous,
+               errorMessage: 'Matrícula ambígua na folha.',
+               rectifiedImagePath,
+               overlayImagePath,
+               detectionPayload,
+               omrPayload,
+               engineVersion: omrResponse.engineVersion,
+            });
+            return;
+         }
+
+         const registrationNumber = omrResponse.registration?.value ?? null;
+
+         if (!registrationNumber) {
+            await this.markNeedsReview({
+               captureId,
+               sessionId,
+               startedAtMs,
+               reason: CorrectionCaptureReviewReason.registration_invalid,
+               errorMessage: 'Matrícula não identificada na folha.',
+               rectifiedImagePath,
+               overlayImagePath,
+               detectionPayload,
+               omrPayload,
+               engineVersion: omrResponse.engineVersion,
+            });
+            return;
+         }
+
+         const student = await this.prisma.student.findUnique({
+            where: {
+               schoolId_registrationNumber: {
+                  schoolId: capture.Exam.Klass.Course.schoolId,
+                  registrationNumber,
+               },
+            },
+            select: { id: true },
+         });
+
+         if (!student) {
+            await this.markNeedsReview({
+               captureId,
+               sessionId,
+               startedAtMs,
+               reason: CorrectionCaptureReviewReason.registration_invalid,
+               errorMessage:
+                  'Matrícula não encontrada na base para esta correção.',
+               rectifiedImagePath,
+               overlayImagePath,
+               detectionPayload,
+               omrPayload,
+               registrationNumber,
+               engineVersion: omrResponse.engineVersion,
+            });
+            return;
+         }
+
+         const answers = this.normalizeAnswers(
+            omrResponse,
+            capture.Exam.Questions.length,
+         );
+
+         if (answers.hasAmbiguity) {
+            await this.markNeedsReview({
+               captureId,
+               sessionId,
+               startedAtMs,
+               reason: CorrectionCaptureReviewReason.answer_ambiguous,
+               errorMessage: 'Folha com ambiguidades de marcação.',
+               rectifiedImagePath,
+               overlayImagePath,
+               detectionPayload,
+               omrPayload,
+               registrationNumber,
+               studentId: student.id,
+               engineVersion: omrResponse.engineVersion,
+            });
+            return;
+         }
+
+         const questionMap = new Map(
+            capture.Exam.Questions.map((question) => [
+               question.number,
+               question,
+            ]),
+         );
+
+         let score = 0;
+         let correctAnswersCount = 0;
+         const correctionItems: Array<{
+            questionId: string;
+            selected: number | null;
+            isCorrect: boolean | null;
+         }> = [];
+
+         for (
+            let number = 1;
+            number <= capture.Exam.Questions.length;
+            number += 1
+         ) {
+            const question = questionMap.get(number);
+            if (!question) continue;
+
+            const selected = answers.values[number - 1] ?? null;
+            const isCorrect =
+               selected === null ? null : selected === question.correct;
+
+            if (isCorrect) {
+               score += question.value;
+               correctAnswersCount += 1;
+            }
+
+            correctionItems.push({
+               questionId: question.id,
+               selected,
+               isCorrect,
+            });
+         }
+
+         const attempt =
+            (await this.prisma.correctionExam.count({
+               where: {
+                  examId: capture.examId,
+                  studentId: student.id,
+               },
+            })) + 1;
+
+         const processingMs = Math.max(0, Date.now() - startedAtMs);
+
+         const correction = await this.prisma.$transaction(async (tx) => {
+            const createdCorrection = await tx.correctionExam.create({
+               data: {
+                  examId: capture.examId,
+                  studentId: student.id,
+                  filePath: capture.originalImagePath,
+                  attempt,
+                  score,
+                  status: 'graded',
+                  metadata: {
+                     source: 'omr_v2',
+                     captureId,
+                     omrEngineVersion: omrResponse.engineVersion ?? 'unknown',
+                  } as Prisma.InputJsonValue,
+               },
+            });
+
+            await tx.correctionQuestion.createMany({
+               data: correctionItems.map((item) => ({
+                  correctionId: createdCorrection.id,
+                  questionId: item.questionId,
+                  selected: item.selected,
+                  isCorrect: item.isCorrect,
+               })),
+            });
+
+            await tx.correctionCapture.update({
+               where: { id: capture.id },
+               data: {
+                  status: 'graded',
+                  reviewReasons: [],
+                  reviewNotes: null,
+                  errorMessage: null,
+                  correctionExamId: createdCorrection.id,
+                  studentId: student.id,
+                  registrationNumber,
+                  engineVersion: omrResponse.engineVersion ?? null,
+                  processingMs,
+                  rectifiedImagePath,
+                  overlayImagePath,
+                  detectionPayload,
+                  omrPayload,
+               },
+            });
+
+            return createdCorrection;
+         });
+
+         this.trace('correction_omr.capture_graded', {
+            jobId: job.id,
+            captureId,
+            sessionId,
+            correctionId: correction.id,
+            correctAnswersCount,
+            questionCount: capture.Exam.Questions.length,
+            score,
+            attempt,
+            processingMs,
+         });
+
+         await this.publisher.publish({
+            sessionId,
+            captureId,
+            stage: CorrectionEventStageEnum.CAPTURE_GRADED,
+            durationMs: processingMs,
+            payload: {
+               captureId,
+               correctionId: correction.id,
+               correctAnswersCount,
+               questionCount: capture.Exam.Questions.length,
+               score,
+               attempt,
+               registrationNumber,
             },
          });
 
-         return createdCorrection;
-      });
-
-      await this.publisher.publish({
-         sessionId,
-         captureId,
-         stage: CorrectionEventStageEnum.CAPTURE_GRADED,
-         durationMs: processingMs,
-         payload: {
+         await this.refreshMetricsSafely(sessionId);
+      } catch (error) {
+         await this.markError({
             captureId,
-            correctionId: correction.id,
-            score,
-            attempt,
-            registrationNumber,
-         },
-      });
-
-      await this.metrics.refreshSessionMetrics(sessionId);
+            sessionId,
+            startedAtMs,
+            errorMessage: 'Falha ao persistir resultado da correção.',
+            extra: {
+               stage: 'post_omr_finalize',
+               error: (error as Error).message,
+            },
+         });
+      }
    }
 
    private normalizeAnswers(omr: OmrProcessResponse, questionCount: number) {
       if (Array.isArray(omr.answers) && omr.answers.length > 0) {
-         const values = Array.from({ length: questionCount }, () => null as number | null);
+         const values = Array.from(
+            { length: questionCount },
+            () => null as number | null,
+         );
          let hasAmbiguity = false;
 
          for (const answer of omr.answers) {
@@ -428,7 +521,9 @@ export class CorrectionOmrProcessor extends WorkerHost {
             }
 
             const selected =
-               typeof answer.selected === 'number' && answer.selected >= 1 && answer.selected <= 5
+               typeof answer.selected === 'number' &&
+               answer.selected >= 1 &&
+               answer.selected <= 5
                   ? answer.selected
                   : null;
 
@@ -438,8 +533,13 @@ export class CorrectionOmrProcessor extends WorkerHost {
          return { values, hasAmbiguity };
       }
 
-      const picks = Array.isArray(omr.answers_numeric) ? omr.answers_numeric : [];
-      const values = Array.from({ length: questionCount }, () => null as number | null);
+      const picks = Array.isArray(omr.answers_numeric)
+         ? omr.answers_numeric
+         : [];
+      const values = Array.from(
+         { length: questionCount },
+         () => null as number | null,
+      );
       let hasAmbiguity = false;
 
       for (let i = 0; i < questionCount; i += 1) {
@@ -457,96 +557,6 @@ export class CorrectionOmrProcessor extends WorkerHost {
       }
 
       return { values, hasAmbiguity };
-   }
-
-   private validateQr(
-      rawQrData: string | undefined,
-      secret: string,
-   ): {
-      valid: boolean;
-      reason: CorrectionCaptureReviewReason;
-      registrationNumber?: string;
-      examId?: string;
-      error?: string;
-   } {
-      if (!rawQrData || rawQrData.trim().length === 0) {
-         return {
-            valid: false,
-            reason: CorrectionCaptureReviewReason.qr_missing,
-            error: 'QR não encontrado.',
-         };
-      }
-
-      let payloadText = '';
-      let signature = '';
-
-      try {
-         const parsed = JSON.parse(rawQrData) as Record<string, unknown>;
-         if (typeof parsed.payload === 'string' && typeof parsed.sig === 'string') {
-            payloadText = parsed.payload;
-            signature = parsed.sig;
-         }
-      } catch {
-         // ignore
-      }
-
-      if (!payloadText || !signature) {
-         const tokenParts = rawQrData.split('.');
-         if (tokenParts.length !== 2) {
-            return {
-               valid: false,
-               reason: CorrectionCaptureReviewReason.qr_invalid,
-               error: 'Formato do QR inválido.',
-            };
-         }
-
-         [payloadText, signature] = tokenParts;
-      }
-
-      const expectedSig = createHmac('sha256', secret)
-         .update(payloadText)
-         .digest('hex');
-
-      const expectedBuffer = Buffer.from(expectedSig);
-      const receivedBuffer = Buffer.from(signature);
-
-      if (
-         expectedBuffer.length !== receivedBuffer.length ||
-         !timingSafeEqual(expectedBuffer, receivedBuffer)
-      ) {
-         return {
-            valid: false,
-            reason: CorrectionCaptureReviewReason.qr_signature_invalid,
-            error: 'Assinatura do QR inválida.',
-         };
-      }
-
-      try {
-         const payload = JSON.parse(payloadText) as Record<string, unknown>;
-
-         const registrationNumber =
-            typeof payload.registrationNumber === 'string'
-               ? payload.registrationNumber
-               : typeof payload.registration === 'string'
-                 ? payload.registration
-                 : undefined;
-
-         const examId =
-            typeof payload.examId === 'string' ? payload.examId : undefined;
-
-         return {
-            valid: true,
-            reason: CorrectionCaptureReviewReason.manual_review,
-            registrationNumber,
-            examId,
-         };
-      } catch {
-         return {
-            valid: false,
-            reason: CorrectionCaptureReviewReason.qr_invalid,
-            error: 'Payload do QR inválido.',
-         };
-      }
    }
 
    private async markNeedsReview(input: {
@@ -594,7 +604,15 @@ export class CorrectionOmrProcessor extends WorkerHost {
          },
       });
 
-      await this.metrics.refreshSessionMetrics(input.sessionId);
+      this.trace('correction_omr.capture_needs_review', {
+         captureId: input.captureId,
+         sessionId: input.sessionId,
+         reason: input.reason,
+         processingMs,
+         errorMessage: input.errorMessage,
+      });
+
+      await this.refreshMetricsSafely(input.sessionId);
    }
 
    private async markError(input: {
@@ -613,7 +631,9 @@ export class CorrectionOmrProcessor extends WorkerHost {
             reviewReasons: [CorrectionCaptureReviewReason.omr_error],
             errorMessage: input.errorMessage,
             processingMs,
-            detectionPayload: input.extra ? this.toJson(input.extra) : undefined,
+            detectionPayload: input.extra
+               ? this.toJson(input.extra)
+               : undefined,
          },
       });
 
@@ -629,7 +649,14 @@ export class CorrectionOmrProcessor extends WorkerHost {
          },
       });
 
-      await this.metrics.refreshSessionMetrics(input.sessionId);
+      this.trace('correction_omr.capture_error', {
+         captureId: input.captureId,
+         sessionId: input.sessionId,
+         processingMs,
+         errorMessage: input.errorMessage,
+      });
+
+      await this.refreshMetricsSafely(input.sessionId);
    }
 
    private async saveBase64Artifact(
@@ -643,5 +670,21 @@ export class CorrectionOmrProcessor extends WorkerHost {
 
    private toJson(value: unknown): Prisma.InputJsonValue {
       return JSON.parse(JSON.stringify(value ?? null)) as Prisma.InputJsonValue;
+   }
+
+   private trace(event: string, meta?: Record<string, unknown>) {
+      if (!this.config.debugTrace) return;
+      this.logger.debug(event, JSON.parse(JSON.stringify(meta ?? null)) as any);
+   }
+
+   private async refreshMetricsSafely(sessionId: string) {
+      try {
+         await this.metrics.refreshSessionMetrics(sessionId);
+      } catch (error) {
+         this.trace('correction_omr.metrics_refresh_failed', {
+            sessionId,
+            error: (error as Error).message,
+         });
+      }
    }
 }

@@ -23,7 +23,8 @@ export class StartCorrectionSessionService {
          'klass.correction.run',
       );
 
-      const startedByAgentId = await this.scopedAccessService.getAgentIdByUserId(user.id);
+      const startedByAgentId =
+         await this.scopedAccessService.getAgentIdByUserId(user.id);
 
       const session = await this.prisma.correctionSession.create({
          data: {
