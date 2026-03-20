@@ -106,9 +106,9 @@ export class AuthAccessResolver {
       @Context() ctx: { req?: Request; res?: Response },
    ): Promise<ActionResultObject> {
       const refreshTokenFromCookie = ctx.req?.cookies?.[AUTH_COOKIE.REFRESH];
+      const authHeader = ctx.req?.headers?.authorization;
       const usingBearerToken =
-         typeof ctx.req?.headers.authorization === 'string' &&
-         ctx.req.headers.authorization.startsWith('Bearer ');
+         typeof authHeader === 'string' && authHeader.startsWith('Bearer ');
       this.validateCsrfTokenService.run({
          req: ctx.req,
          channel: args.data.channel,

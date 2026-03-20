@@ -1,10 +1,11 @@
-import { Logger, RequestMethod, ValidationPipe } from '@nestjs/common';
+import { RequestMethod, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { MyLogger } from '../logger/my-logger.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AppModule } from './app.module';
 
@@ -19,8 +20,12 @@ async function getApp() {
 
    app.use(helmet({ contentSecurityPolicy: false }));
 
-   app.useLogger(new Logger('Nest'));
    const configService = app.get(ConfigService);
+   const appLogger = app.get(MyLogger);
+   if (configService.get<boolean>('correction.debugTrace')) {
+      appLogger.setLogLevels(['log', 'error', 'warn', 'debug', 'verbose']);
+   }
+   app.useLogger(appLogger);
    const frontUrl = configService.get<string>('app.baseWebUrl');
    const adminUrl = configService.get<string>('app.baseAdminUrl');
 

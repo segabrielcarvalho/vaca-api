@@ -10,6 +10,35 @@ export class MeService {
    async run(user: AuthCurrentUser): Promise<User> {
       const currentUser = await this.prisma.user.findUnique({
          where: { id: user.id },
+         include: {
+            Agent: {
+               include: {
+                  Memberships: {
+                     include: {
+                        Role: {
+                           select: {
+                              code: true,
+                           },
+                        },
+                        Klass: {
+                           select: {
+                              id: true,
+                              courseId: true,
+                              Course: {
+                                 select: {
+                                    id: true,
+                                    schoolId: true,
+                                    name: true,
+                                    isActive: true,
+                                 },
+                              },
+                           },
+                        },
+                     },
+                  },
+               },
+            },
+         },
       });
 
       if (!currentUser) {

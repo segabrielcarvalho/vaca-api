@@ -9,11 +9,11 @@ import {
 } from 'class-validator';
 
 @InputType()
-export class ListCorrectionCapturesInput {
+export class ListExamCorrectionSessionsInput {
    @Field()
    @IsString()
    @IsNotEmpty()
-   sessionId!: string;
+   examId!: string;
 
    @Field(() => Int, { nullable: true, defaultValue: 0 })
    @IsOptional()

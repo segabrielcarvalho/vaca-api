@@ -65,4 +65,3 @@ export class AclMembershipPermissionOverrideResolver {
       return this.aclMembershipPermissionOverrideService.remove(user, input);
    }
 }
-

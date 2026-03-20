@@ -23,6 +23,7 @@ import { RedisModule } from '../redis/redis.module';
 import { SchoolModule } from '../school/school.module';
 import storageConfig, { validateStorageEnv } from '../storage/storage.config';
 import { StorageModule } from '../storage/storage.module';
+import { StudentModule } from '../student/student.module';
 
 import appConfig, { validateAppEnv } from './app.config';
 import { AppResolver } from './app.resolver';
@@ -66,6 +67,7 @@ const validateEnv = (env: NodeJS.ProcessEnv) => {
       SchoolModule,
       CourseModule,
       KlassModule,
+      StudentModule,
       OmrTemplateModule,
       ExamModule,
       CorrectionModule,

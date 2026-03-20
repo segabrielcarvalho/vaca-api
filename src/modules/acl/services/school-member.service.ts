@@ -514,7 +514,10 @@ export class SchoolMemberService {
          { agentId: string; roleCode: string | null }
       >();
       for (const member of members) {
-         const roleCode = this.resolveRoleCodeForScope(member.Memberships, scope);
+         const roleCode = this.resolveRoleCodeForScope(
+            member.Memberships,
+            scope,
+         );
 
          roleByUserId.set(member.userId, {
             agentId: member.id,
@@ -786,8 +789,10 @@ export class SchoolMemberService {
       }
 
       const roleCode =
-         this.resolveRoleCodeForScope(invite.User?.Agent?.Memberships ?? [], scope) ??
-         null;
+         this.resolveRoleCodeForScope(
+            invite.User?.Agent?.Memberships ?? [],
+            scope,
+         ) ?? null;
       const roleRef = invite.User?.Agent?.id
          ? {
               agentId: invite.User.Agent.id,
@@ -1269,8 +1274,9 @@ export class SchoolMemberService {
    ): string | null {
       if (scope.scopeType === AclScopeType.school) {
          return (
-            memberships.find((membership) => membership.schoolId === scope.schoolId)
-               ?.Role.code ?? null
+            memberships.find(
+               (membership) => membership.schoolId === scope.schoolId,
+            )?.Role.code ?? null
          );
       }
 

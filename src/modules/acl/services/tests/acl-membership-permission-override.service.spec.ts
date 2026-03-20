@@ -144,7 +144,12 @@ describe('AclMembershipPermissionOverrideService', () => {
          Role: { rank: 200 },
          School: null,
          Course: null,
-         Klass: { id: 'klass-1', name: 'Turma A', courseId: 'course-1', Course: null },
+         Klass: {
+            id: 'klass-1',
+            name: 'Turma A',
+            courseId: 'course-1',
+            Course: null,
+         },
       });
       prisma.aclPermission.findFirst.mockResolvedValue(null);
 
@@ -236,4 +241,3 @@ describe('AclMembershipPermissionOverrideService', () => {
       ).rejects.toThrow(NotFoundException);
    });
 });
-

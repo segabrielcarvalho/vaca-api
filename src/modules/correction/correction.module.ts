@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from '../auth/auth.module';
+import { LoggerModule } from '../logger/logger.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { QueueModule } from '../queue/queue.module';
 import { RedisModule } from '../redis/redis.module';
@@ -12,7 +13,9 @@ import { CorrectionPublisherService } from './services/correction-publisher.serv
 import { StartCorrectionSessionService } from './services/create/start-correction-session.service';
 import { SubmitCorrectionPhotoService } from './services/create/submit-correction-photo.service';
 import { ListCorrectionCapturesService } from './services/get/list-correction-captures.service';
+import { ListExamCorrectionSessionsService } from './services/get/list-exam-correction-sessions.service';
 import { ListExamCorrectionsService } from './services/get/list-exam-corrections.service';
+import { ListExamPendingStudentCapturesService } from './services/get/list-exam-pending-student-captures.service';
 import { CorrectionAccessService } from './services/shared/correction-access.service';
 import { CorrectionMetricsService } from './services/shared/correction-metrics.service';
 import { CorrectionRetentionService } from './services/shared/correction-retention.service';
@@ -25,6 +28,7 @@ import { ResolveCorrectionCaptureService } from './services/update/resolve-corre
       ConfigModule.forFeature(correctionConfig),
       PrismaModule,
       AuthModule,
+      LoggerModule,
       QueueModule,
       StorageModule,
       RedisModule,
@@ -41,7 +45,9 @@ import { ResolveCorrectionCaptureService } from './services/update/resolve-corre
       ResolveCorrectionCaptureService,
       RequeueCorrectionCaptureService,
       ListCorrectionCapturesService,
+      ListExamCorrectionSessionsService,
       ListExamCorrectionsService,
+      ListExamPendingStudentCapturesService,
       CorrectionOmrProcessor,
    ],
 })

@@ -44,9 +44,9 @@ export class GqlAuthGuard implements CanActivate {
       const gqlCtx = gqlExecutionContext.getContext();
       const operation = gqlExecutionContext.getInfo()?.operation?.operation;
       const req = gqlCtx?.req as Request | undefined;
+      const authHeader = req?.headers?.authorization;
       const usingBearerToken =
-         typeof req?.headers.authorization === 'string' &&
-         req.headers.authorization.startsWith('Bearer ');
+         typeof authHeader === 'string' && authHeader.startsWith('Bearer ');
       const usingCookieAuth =
          typeof req?.cookies?.[AUTH_COOKIE.ACCESS] === 'string' &&
          !usingBearerToken;
@@ -62,6 +62,8 @@ export class GqlAuthGuard implements CanActivate {
                   usingCookieAuth,
                });
             }
+            if (req) req.user = existingUser;
+            gqlCtx.user = existingUser;
             return true;
          }
       }

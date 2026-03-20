@@ -127,13 +127,13 @@ export class AuthContextService {
       return this.resolveAuthenticatedUserFromToken(token);
    }
 
-   extractAccessTokenFromRequest(req: Request): string | undefined {
-      const authHeader = req.headers.authorization;
+   extractAccessTokenFromRequest(req?: Request): string | undefined {
+      const authHeader = req?.headers?.authorization;
       if (authHeader?.startsWith('Bearer ')) {
          return authHeader.slice(7);
       }
 
-      const cookieToken = req.cookies?.[AUTH_COOKIE.ACCESS];
+      const cookieToken = req?.cookies?.[AUTH_COOKIE.ACCESS];
       return typeof cookieToken === 'string' ? cookieToken : undefined;
    }
 
