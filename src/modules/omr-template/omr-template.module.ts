@@ -1,7 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from '../auth/auth.module';
-import correctionConfig from '../correction/config/correction.config';
 import { LoggerModule } from '../logger/logger.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { QueueModule } from '../queue/queue.module';
@@ -15,7 +13,6 @@ import { GetOmrTemplateService } from './services/get/get-omr-template.service';
 import { ListCourseOmrTemplatesService } from './services/list/list-course-omr-templates.service';
 import { OmrTemplatePdfGenerationProcessor } from './services/pdf/omr-template-pdf-generation.processor';
 import { OmrTemplatePdfRendererService } from './services/pdf/omr-template-pdf-renderer.service';
-import { OmrTemplateQrSignerService } from './services/pdf/omr-template-qr-signer.service';
 import { QueueOmrTemplatePdfGenerationService } from './services/pdf/queue-omr-template-pdf-generation.service';
 import { OmrTemplateRulesService } from './services/shared/omr-template-rules.service';
 import { ArchiveOmrTemplateService } from './services/update/archive-omr-template.service';
@@ -24,7 +21,6 @@ import { PublishOmrTemplateVersionService } from './services/update/publish-omr-
 
 @Module({
    imports: [
-      ConfigModule.forFeature(correctionConfig),
       PrismaModule,
       LoggerModule,
       AuthModule,
@@ -44,7 +40,6 @@ import { PublishOmrTemplateVersionService } from './services/update/publish-omr-
       ListCourseOmrTemplatesService,
       OmrTemplateRulesService,
       QueueOmrTemplatePdfGenerationService,
-      OmrTemplateQrSignerService,
       OmrTemplatePdfRendererService,
       OmrTemplatePdfGenerationProcessor,
    ],

@@ -4067,9 +4067,6 @@ enum CorrectionCaptureReviewReason {
   answer_ambiguous
   manual_review
   omr_error
-  qr_invalid
-  qr_missing
-  qr_signature_invalid
   registration_ambiguous
   registration_invalid
 }
@@ -5418,8 +5415,6 @@ type CorrectionSession {
   needsReviewCaptures: Int!
   p95ProcessingMs: Float
   processedCaptures: Int!
-  qrInvalidCaptures: Int!
-  qrInvalidRate: Float
   startedAt: DateTime!
   startedByAgentId: String
   status: CorrectionSessionStatus!
@@ -5444,8 +5439,6 @@ input CorrectionSessionCreateManyExamInput {
   needsReviewCaptures: Int
   p95ProcessingMs: Float
   processedCaptures: Int
-  qrInvalidCaptures: Int
-  qrInvalidRate: Float
   startedAt: DateTime
   startedByAgentId: String
   status: CorrectionSessionStatus
@@ -5471,8 +5464,6 @@ input CorrectionSessionCreateManyStartedByInput {
   needsReviewCaptures: Int
   p95ProcessingMs: Float
   processedCaptures: Int
-  qrInvalidCaptures: Int
-  qrInvalidRate: Float
   startedAt: DateTime
   status: CorrectionSessionStatus
   throughputPerMinute: Float
@@ -5545,8 +5536,6 @@ input CorrectionSessionCreateWithoutCapturesInput {
   needsReviewCaptures: Int
   p95ProcessingMs: Float
   processedCaptures: Int
-  qrInvalidCaptures: Int
-  qrInvalidRate: Float
   startedAt: DateTime
   status: CorrectionSessionStatus
   throughputPerMinute: Float
@@ -5568,8 +5557,6 @@ input CorrectionSessionCreateWithoutEventsInput {
   needsReviewCaptures: Int
   p95ProcessingMs: Float
   processedCaptures: Int
-  qrInvalidCaptures: Int
-  qrInvalidRate: Float
   startedAt: DateTime
   status: CorrectionSessionStatus
   throughputPerMinute: Float
@@ -5591,8 +5578,6 @@ input CorrectionSessionCreateWithoutExamInput {
   needsReviewCaptures: Int
   p95ProcessingMs: Float
   processedCaptures: Int
-  qrInvalidCaptures: Int
-  qrInvalidRate: Float
   startedAt: DateTime
   status: CorrectionSessionStatus
   throughputPerMinute: Float
@@ -5614,8 +5599,6 @@ input CorrectionSessionCreateWithoutStartedByInput {
   needsReviewCaptures: Int
   p95ProcessingMs: Float
   processedCaptures: Int
-  qrInvalidCaptures: Int
-  qrInvalidRate: Float
   startedAt: DateTime
   status: CorrectionSessionStatus
   throughputPerMinute: Float
@@ -5840,6 +5823,11 @@ input CorrectionSessionEventWhereUniqueInput {
   stage: StringFilter
 }
 
+type CorrectionSessionListObject {
+  count: Int!
+  rows: [CorrectionSession!]!
+}
+
 input CorrectionSessionListRelationFilter {
   every: CorrectionSessionWhereInput
   none: CorrectionSessionWhereInput
@@ -5866,8 +5854,6 @@ input CorrectionSessionScalarWhereInput {
   needsReviewCaptures: IntFilter
   p95ProcessingMs: FloatNullableFilter
   processedCaptures: IntFilter
-  qrInvalidCaptures: IntFilter
-  qrInvalidRate: FloatNullableFilter
   startedAt: DateTimeFilter
   startedByAgentId: StringNullableFilter
   status: EnumCorrectionSessionStatusFilter
@@ -5893,8 +5879,6 @@ input CorrectionSessionUpdateManyMutationInput {
   needsReviewCaptures: IntFieldUpdateOperationsInput
   p95ProcessingMs: NullableFloatFieldUpdateOperationsInput
   processedCaptures: IntFieldUpdateOperationsInput
-  qrInvalidCaptures: IntFieldUpdateOperationsInput
-  qrInvalidRate: NullableFloatFieldUpdateOperationsInput
   startedAt: DateTimeFieldUpdateOperationsInput
   status: EnumCorrectionSessionStatusFieldUpdateOperationsInput
   throughputPerMinute: NullableFloatFieldUpdateOperationsInput
@@ -5990,8 +5974,6 @@ input CorrectionSessionUpdateWithoutCapturesInput {
   needsReviewCaptures: IntFieldUpdateOperationsInput
   p95ProcessingMs: NullableFloatFieldUpdateOperationsInput
   processedCaptures: IntFieldUpdateOperationsInput
-  qrInvalidCaptures: IntFieldUpdateOperationsInput
-  qrInvalidRate: NullableFloatFieldUpdateOperationsInput
   startedAt: DateTimeFieldUpdateOperationsInput
   status: EnumCorrectionSessionStatusFieldUpdateOperationsInput
   throughputPerMinute: NullableFloatFieldUpdateOperationsInput
@@ -6013,8 +5995,6 @@ input CorrectionSessionUpdateWithoutEventsInput {
   needsReviewCaptures: IntFieldUpdateOperationsInput
   p95ProcessingMs: NullableFloatFieldUpdateOperationsInput
   processedCaptures: IntFieldUpdateOperationsInput
-  qrInvalidCaptures: IntFieldUpdateOperationsInput
-  qrInvalidRate: NullableFloatFieldUpdateOperationsInput
   startedAt: DateTimeFieldUpdateOperationsInput
   status: EnumCorrectionSessionStatusFieldUpdateOperationsInput
   throughputPerMinute: NullableFloatFieldUpdateOperationsInput
@@ -6036,8 +6016,6 @@ input CorrectionSessionUpdateWithoutExamInput {
   needsReviewCaptures: IntFieldUpdateOperationsInput
   p95ProcessingMs: NullableFloatFieldUpdateOperationsInput
   processedCaptures: IntFieldUpdateOperationsInput
-  qrInvalidCaptures: IntFieldUpdateOperationsInput
-  qrInvalidRate: NullableFloatFieldUpdateOperationsInput
   startedAt: DateTimeFieldUpdateOperationsInput
   status: EnumCorrectionSessionStatusFieldUpdateOperationsInput
   throughputPerMinute: NullableFloatFieldUpdateOperationsInput
@@ -6059,8 +6037,6 @@ input CorrectionSessionUpdateWithoutStartedByInput {
   needsReviewCaptures: IntFieldUpdateOperationsInput
   p95ProcessingMs: NullableFloatFieldUpdateOperationsInput
   processedCaptures: IntFieldUpdateOperationsInput
-  qrInvalidCaptures: IntFieldUpdateOperationsInput
-  qrInvalidRate: NullableFloatFieldUpdateOperationsInput
   startedAt: DateTimeFieldUpdateOperationsInput
   status: EnumCorrectionSessionStatusFieldUpdateOperationsInput
   throughputPerMinute: NullableFloatFieldUpdateOperationsInput
@@ -6111,8 +6087,6 @@ input CorrectionSessionWhereInput {
   needsReviewCaptures: IntFilter
   p95ProcessingMs: FloatNullableFilter
   processedCaptures: IntFilter
-  qrInvalidCaptures: IntFilter
-  qrInvalidRate: FloatNullableFilter
   startedAt: DateTimeFilter
   startedByAgentId: StringNullableFilter
   status: EnumCorrectionSessionStatusFilter
@@ -6140,8 +6114,6 @@ input CorrectionSessionWhereUniqueInput {
   needsReviewCaptures: IntFilter
   p95ProcessingMs: FloatNullableFilter
   processedCaptures: IntFilter
-  qrInvalidCaptures: IntFilter
-  qrInvalidRate: FloatNullableFilter
   startedAt: DateTimeFilter
   startedByAgentId: StringNullableFilter
   status: EnumCorrectionSessionStatusFilter
@@ -6675,6 +6647,13 @@ input CreateExamInput {
   title: String!
 }
 
+input CreateKlassStudentInput {
+  email: String
+  klassId: String!
+  name: String!
+  registrationNumber: String!
+}
+
 input CreateOmrTemplateInput {
   courseId: String!
   description: String
@@ -6738,6 +6717,15 @@ input DateTimeNullableFilter {
 Scalar Decimal que serializa para string e converte para Prisma.Decimal.
 """
 scalar Decimal
+
+input DeleteExamInput {
+  examId: String!
+}
+
+input DeleteKlassStudentInput {
+  klassId: String!
+  studentId: String!
+}
 
 type EmailChallengeStart {
   challengeId: ID!
@@ -7135,6 +7123,25 @@ input ExamOrderByRelationAggregateInput {
   _count: SortOrder
 }
 
+type ExamPendingStudentCaptureListObject {
+  count: Int!
+  rows: [ExamPendingStudentCaptureObject!]!
+}
+
+type ExamPendingStudentCaptureObject {
+  captureId: String!
+  createdAt: DateTime!
+  matchedStudentEmail: String
+  matchedStudentId: String
+  matchedStudentName: String
+  matchedStudentRegistrationNumber: String
+  registrationNumber: String
+  reviewNotes: String
+  reviewReasons: [CorrectionCaptureReviewReason!]!
+  sessionId: String!
+  status: CorrectionCaptureStatus!
+}
+
 input ExamScalarRelationFilter {
   is: ExamWhereInput
   isNot: ExamWhereInput
@@ -7482,6 +7489,11 @@ input GetExamInput {
   examId: String!
 }
 
+input GetKlassStudentInput {
+  klassId: String!
+  studentId: String!
+}
+
 input GetOmrTemplateInput {
   templateId: String!
 }
@@ -7495,6 +7507,15 @@ input GetSchoolMemberInput {
   courseId: String
   klassId: String
   schoolId: String!
+}
+
+input GetStudentDetailInput {
+  studentId: String!
+}
+
+input ImportKlassStudentsCsvInput {
+  csvContent: String!
+  klassId: String!
 }
 
 input IntFieldUpdateOperationsInput {
@@ -7815,6 +7836,68 @@ input KlassScalarWhereInput {
   updatedAt: DateTimeFilter
 }
 
+type KlassStudentEnrollmentObject {
+  active: Boolean!
+  endedAt: DateTime
+  startedAt: DateTime!
+}
+
+enum KlassStudentEnrollmentStatusEnum {
+  active
+  all
+  inactive
+}
+
+type KlassStudentImportResultObject {
+  alreadyActiveCount: Int!
+  createdCount: Int!
+  errorCount: Int!
+  linkedCount: Int!
+  processedRows: Int!
+  reactivatedCount: Int!
+  rows: [KlassStudentImportRowObject!]!
+  totalRows: Int!
+}
+
+type KlassStudentImportRowObject {
+  email: String
+  message: String
+  name: String
+  registrationNumber: String
+  rowNumber: Float!
+  status: KlassStudentImportRowStatusEnum!
+  studentId: String
+}
+
+enum KlassStudentImportRowStatusEnum {
+  already_active
+  created
+  error
+  linked
+  reactivated
+}
+
+type KlassStudentListObject {
+  count: Int!
+  rows: [KlassStudentObject!]!
+}
+
+type KlassStudentObject {
+  createdAt: DateTime!
+  email: String!
+  enrollmentActive: Boolean!
+  enrollmentEndedAt: DateTime
+  enrollmentStartedAt: DateTime
+  enrollments: [KlassStudentEnrollmentObject!]!
+  klassId: String!
+  name: String
+  registrationNumber: String!
+  schoolId: String!
+  studentId: String!
+  updatedAt: DateTime!
+  userId: String!
+}
+
 input KlassUpdateInput {
   Course: CourseUpdateOneRequiredWithoutKlassesNestedInput
   Enrollments: StudentKlassUpdateManyWithoutKlassNestedInput
@@ -8047,15 +8130,37 @@ input ListCourseOmrTemplatesInput {
   take: Int = 20
 }
 
+input ListExamCorrectionSessionsInput {
+  examId: String!
+  skip: Int = 0
+  take: Int = 20
+}
+
 input ListExamCorrectionsInput {
   examId: String!
   skip: Int = 0
   take: Int = 20
 }
 
-input ListKlassExamsInput {
-  klassId: String!
+input ListExamPendingStudentCapturesInput {
+  examId: String!
   skip: Int = 0
+  take: Int = 20
+}
+
+input ListKlassExamsInput {
+  isActive: Boolean
+  klassId: String!
+  search: String
+  skip: Int = 0
+  take: Int = 20
+}
+
+input ListKlassStudentsInput {
+  klassId: String!
+  search: String
+  skip: Int = 0
+  status: KlassStudentEnrollmentStatusEnum = active
   take: Int = 20
 }
 
@@ -8093,17 +8198,23 @@ type Mutation {
   createCourse(data: CourseCreateInput!): Course!
   createExam(input: CreateExamInput!): Exam!
   createKlass(data: KlassCreateInput!): Klass!
+  createKlassStudent(input: CreateKlassStudentInput!): KlassStudentObject!
   createOmrTemplate(input: CreateOmrTemplateInput!): OmrTemplate!
   createOmrTemplateVersion(input: CreateOmrTemplateVersionInput!): OmrTemplateVersion!
   createSchool(data: CreateSchoolInput!): School!
   deleteCourse(where: CourseWhereUniqueInput!): Course!
+  deleteExam(input: DeleteExamInput!): Exam!
   deleteKlass(where: KlassWhereUniqueInput!): Klass!
+  deleteKlassStudent(input: DeleteKlassStudentInput!): KlassStudentObject!
   deleteSchool(where: SchoolWhereUniqueInput!): School!
   generateOmrTemplateVersionPdf(input: GenerateOmrTemplateVersionPdfInput!): OmrTemplateVersionPdfAsset!
+  importKlassStudentsCsv(input: ImportKlassStudentsCsvInput!): KlassStudentImportResultObject!
   inviteSchoolMember(input: InviteSchoolMemberInput!): SchoolMemberInviteObject!
   inviteUser(data: InviteUserInput!): ActionResultObject!
   logoutCurrentSession(data: LogoutCurrentSessionInput!): ActionResultObject!
   publishOmrTemplateVersion(input: PublishOmrTemplateVersionInput!): OmrTemplateVersion!
+  reactivateExam(input: ReactivateExamInput!): Exam!
+  reactivateKlassStudent(input: ReactivateKlassStudentInput!): KlassStudentObject!
   refreshAuthSession(data: RefreshAuthSessionInput!): AuthSessionResult!
   removeAclMembership(input: RemoveAclMembershipInput!): AclMembershipObject!
   removeAclMembershipPermissionOverride(input: RemoveAclMembershipPermissionOverrideInput!): AclMembershipPermissionOverrideObject!
@@ -8118,6 +8229,7 @@ type Mutation {
   updateCourse(data: CourseUpdateInput!, where: CourseWhereUniqueInput!): Course!
   updateExam(input: UpdateExamInput!): Exam!
   updateKlass(data: KlassUpdateInput!, where: KlassWhereUniqueInput!): Klass!
+  updateKlassStudent(input: UpdateKlassStudentInput!): KlassStudentObject!
   updateSchool(data: SchoolUpdateInput!, where: SchoolWhereUniqueInput!): School!
   updateSchoolMemberBasics(input: UpdateSchoolMemberBasicsInput!): SchoolMemberObject!
   uploadCourseBranding(input: UploadCourseBrandingInput!): Course!
@@ -9014,7 +9126,6 @@ type OmrTemplateVersionPdfAsset {
   isActive: Boolean!
   pdfPath: String
   previewImagePath: String
-  qrPayloadJson: JSON
   startedAt: DateTime
   status: OmrTemplatePdfGenerationStatus!
   templateVersionId: String!
@@ -9032,7 +9143,6 @@ input OmrTemplateVersionPdfAssetCreateManyTemplateVersionInput {
   isActive: Boolean
   pdfPath: String
   previewImagePath: String
-  qrPayloadJson: JSON
   startedAt: DateTime
   status: OmrTemplatePdfGenerationStatus!
   trigger: OmrTemplatePdfGenerationTrigger!
@@ -9054,7 +9164,6 @@ input OmrTemplateVersionPdfAssetCreateManyTriggeredByInput {
   isActive: Boolean
   pdfPath: String
   previewImagePath: String
-  qrPayloadJson: JSON
   startedAt: DateTime
   status: OmrTemplatePdfGenerationStatus!
   templateVersionId: String!
@@ -9101,7 +9210,6 @@ input OmrTemplateVersionPdfAssetCreateWithoutTemplateVersionInput {
   isActive: Boolean
   pdfPath: String
   previewImagePath: String
-  qrPayloadJson: JSON
   startedAt: DateTime
   status: OmrTemplatePdfGenerationStatus!
   trigger: OmrTemplatePdfGenerationTrigger!
@@ -9118,7 +9226,6 @@ input OmrTemplateVersionPdfAssetCreateWithoutTriggeredByInput {
   isActive: Boolean
   pdfPath: String
   previewImagePath: String
-  qrPayloadJson: JSON
   startedAt: DateTime
   status: OmrTemplatePdfGenerationStatus!
   trigger: OmrTemplatePdfGenerationTrigger!
@@ -9143,7 +9250,6 @@ input OmrTemplateVersionPdfAssetScalarWhereInput {
   isActive: BoolFilter
   pdfPath: StringNullableFilter
   previewImagePath: StringNullableFilter
-  qrPayloadJson: JsonNullableFilter
   startedAt: DateTimeNullableFilter
   status: EnumOmrTemplatePdfGenerationStatusFilter
   templateVersionId: StringFilter
@@ -9166,7 +9272,6 @@ input OmrTemplateVersionPdfAssetUpdateManyMutationInput {
   isActive: BoolFieldUpdateOperationsInput
   pdfPath: NullableStringFieldUpdateOperationsInput
   previewImagePath: NullableStringFieldUpdateOperationsInput
-  qrPayloadJson: JSON
   startedAt: NullableDateTimeFieldUpdateOperationsInput
   status: EnumOmrTemplatePdfGenerationStatusFieldUpdateOperationsInput
   trigger: EnumOmrTemplatePdfGenerationTriggerFieldUpdateOperationsInput
@@ -9231,7 +9336,6 @@ input OmrTemplateVersionPdfAssetUpdateWithoutTemplateVersionInput {
   isActive: BoolFieldUpdateOperationsInput
   pdfPath: NullableStringFieldUpdateOperationsInput
   previewImagePath: NullableStringFieldUpdateOperationsInput
-  qrPayloadJson: JSON
   startedAt: NullableDateTimeFieldUpdateOperationsInput
   status: EnumOmrTemplatePdfGenerationStatusFieldUpdateOperationsInput
   trigger: EnumOmrTemplatePdfGenerationTriggerFieldUpdateOperationsInput
@@ -9248,7 +9352,6 @@ input OmrTemplateVersionPdfAssetUpdateWithoutTriggeredByInput {
   isActive: BoolFieldUpdateOperationsInput
   pdfPath: NullableStringFieldUpdateOperationsInput
   previewImagePath: NullableStringFieldUpdateOperationsInput
-  qrPayloadJson: JSON
   startedAt: NullableDateTimeFieldUpdateOperationsInput
   status: EnumOmrTemplatePdfGenerationStatusFieldUpdateOperationsInput
   trigger: EnumOmrTemplatePdfGenerationTriggerFieldUpdateOperationsInput
@@ -9281,7 +9384,6 @@ input OmrTemplateVersionPdfAssetWhereInput {
   isActive: BoolFilter
   pdfPath: StringNullableFilter
   previewImagePath: StringNullableFilter
-  qrPayloadJson: JsonNullableFilter
   startedAt: DateTimeNullableFilter
   status: EnumOmrTemplatePdfGenerationStatusFilter
   templateVersionId: StringFilter
@@ -9304,7 +9406,6 @@ input OmrTemplateVersionPdfAssetWhereUniqueInput {
   isActive: BoolFilter
   pdfPath: StringNullableFilter
   previewImagePath: StringNullableFilter
-  qrPayloadJson: JsonNullableFilter
   startedAt: DateTimeNullableFilter
   status: EnumOmrTemplatePdfGenerationStatusFilter
   templateVersionId: StringFilter
@@ -9699,10 +9800,12 @@ type Query {
   getCourseAdminSettings(input: GetCourseAdminSettingsInput!): Course!
   getExam(input: GetExamInput!): Exam!
   getKlass(where: KlassWhereUniqueInput!): Klass!
+  getKlassStudent(input: GetKlassStudentInput!): KlassStudentObject!
   getOmrTemplate(input: GetOmrTemplateInput!): OmrTemplate!
   getSchool(where: SchoolWhereUniqueInput!): School!
   getSchoolAdminSettings(input: GetSchoolAdminSettingsInput!): School!
   getSchoolMember(input: GetSchoolMemberInput!): SchoolMemberDetailObject!
+  getStudentDetail(input: GetStudentDetailInput!): StudentDetailObject!
   healthCheck: String!
   listAclMembershipPermissionOverrides(input: ListAclMembershipPermissionOverridesInput!): AclMembershipPermissionOverrideListObject!
   listAclMemberships(scopeId: String!, scopeType: AclScopeType!, skip: Int, take: Int): AclMembershipListObject!
@@ -9711,8 +9814,11 @@ type Query {
   listCorrectionCaptures(input: ListCorrectionCapturesInput!): CorrectionCaptureListObject!
   listCourseOmrTemplates(input: ListCourseOmrTemplatesInput!): OmrTemplateListObject!
   listCourses(cursor: CourseWhereUniqueInput, distinct: [CourseScalarFieldEnum!], orderBy: [CourseOrderByWithRelationInput!], skip: Int, take: Int, where: CourseWhereInput): CourseListObject!
+  listExamCorrectionSessions(input: ListExamCorrectionSessionsInput!): CorrectionSessionListObject!
   listExamCorrections(input: ListExamCorrectionsInput!): CorrectionExamListObject!
+  listExamPendingStudentCaptures(input: ListExamPendingStudentCapturesInput!): ExamPendingStudentCaptureListObject!
   listKlassExams(input: ListKlassExamsInput!): ExamListObject!
+  listKlassStudents(input: ListKlassStudentsInput!): KlassStudentListObject!
   listKlasses(cursor: KlassWhereUniqueInput, distinct: [KlassScalarFieldEnum!], orderBy: [KlassOrderByWithRelationInput!], skip: Int, take: Int, where: KlassWhereInput): KlassListObject!
   listSchoolMemberInvites(input: ListSchoolMemberInvitesInput!): SchoolMemberInviteListObject!
   listSchoolMembers(input: ListSchoolMembersInput!): SchoolMemberListObject!
@@ -9958,6 +10064,15 @@ input QuestionWhereUniqueInput {
   value: FloatFilter
 }
 
+input ReactivateExamInput {
+  examId: String!
+}
+
+input ReactivateKlassStudentInput {
+  klassId: String!
+  studentId: String!
+}
+
 input RefreshAuthSessionInput {
   channel: AuthChannelEnum!
   refreshToken: String
@@ -10011,6 +10126,7 @@ enum RoleEnum {
 type School {
   Courses: [Course!]
   Memberships: [AclMembership!]
+  Students: [Student!]
   _count: SchoolCount!
   bannerPath: String
   createdAt: DateTime!
@@ -10030,6 +10146,7 @@ type School {
 type SchoolCount {
   Courses: Int!
   Memberships: Int!
+  Students: Int!
 }
 
 input SchoolCreateNestedOneWithoutCoursesInput {
@@ -10044,6 +10161,12 @@ input SchoolCreateNestedOneWithoutMembershipsInput {
   create: SchoolCreateWithoutMembershipsInput
 }
 
+input SchoolCreateNestedOneWithoutStudentsInput {
+  connect: SchoolWhereUniqueInput
+  connectOrCreate: SchoolCreateOrConnectWithoutStudentsInput
+  create: SchoolCreateWithoutStudentsInput
+}
+
 input SchoolCreateOrConnectWithoutCoursesInput {
   create: SchoolCreateWithoutCoursesInput!
   where: SchoolWhereUniqueInput!
@@ -10054,8 +10177,14 @@ input SchoolCreateOrConnectWithoutMembershipsInput {
   where: SchoolWhereUniqueInput!
 }
 
+input SchoolCreateOrConnectWithoutStudentsInput {
+  create: SchoolCreateWithoutStudentsInput!
+  where: SchoolWhereUniqueInput!
+}
+
 input SchoolCreateWithoutCoursesInput {
   Memberships: AclMembershipCreateNestedManyWithoutSchoolInput
+  Students: StudentCreateNestedManyWithoutSchoolInput
   bannerPath: String
   createdAt: DateTime
   description: String
@@ -10073,6 +10202,25 @@ input SchoolCreateWithoutCoursesInput {
 
 input SchoolCreateWithoutMembershipsInput {
   Courses: CourseCreateNestedManyWithoutSchoolInput
+  Students: StudentCreateNestedManyWithoutSchoolInput
+  bannerPath: String
+  createdAt: DateTime
+  description: String
+  faviconPath: String
+  id: String
+  institutionCode: String!
+  isActive: Boolean
+  logoFullPath: String
+  logoMarkPath: String
+  name: String!
+  primaryColor: String
+  secondaryColor: String
+  updatedAt: DateTime
+}
+
+input SchoolCreateWithoutStudentsInput {
+  Courses: CourseCreateNestedManyWithoutSchoolInput
+  Memberships: AclMembershipCreateNestedManyWithoutSchoolInput
   bannerPath: String
   createdAt: DateTime
   description: String
@@ -10177,6 +10325,7 @@ input SchoolNullableScalarRelationFilter {
 input SchoolOrderByWithRelationInput {
   Courses: CourseOrderByRelationAggregateInput
   Memberships: AclMembershipOrderByRelationAggregateInput
+  Students: StudentOrderByRelationAggregateInput
   bannerPath: SortOrderInput
   createdAt: SortOrder
   description: SortOrderInput
@@ -10216,6 +10365,7 @@ input SchoolScalarRelationFilter {
 input SchoolUpdateInput {
   Courses: CourseUpdateManyWithoutSchoolNestedInput
   Memberships: AclMembershipUpdateManyWithoutSchoolNestedInput
+  Students: StudentUpdateManyWithoutSchoolNestedInput
   bannerPath: NullableStringFieldUpdateOperationsInput
   createdAt: DateTimeFieldUpdateOperationsInput
   description: NullableStringFieldUpdateOperationsInput
@@ -10239,6 +10389,14 @@ input SchoolUpdateOneRequiredWithoutCoursesNestedInput {
   upsert: SchoolUpsertWithoutCoursesInput
 }
 
+input SchoolUpdateOneRequiredWithoutStudentsNestedInput {
+  connect: SchoolWhereUniqueInput
+  connectOrCreate: SchoolCreateOrConnectWithoutStudentsInput
+  create: SchoolCreateWithoutStudentsInput
+  update: SchoolUpdateToOneWithWhereWithoutStudentsInput
+  upsert: SchoolUpsertWithoutStudentsInput
+}
+
 input SchoolUpdateOneWithoutMembershipsNestedInput {
   connect: SchoolWhereUniqueInput
   connectOrCreate: SchoolCreateOrConnectWithoutMembershipsInput
@@ -10259,8 +10417,14 @@ input SchoolUpdateToOneWithWhereWithoutMembershipsInput {
   where: SchoolWhereInput
 }
 
+input SchoolUpdateToOneWithWhereWithoutStudentsInput {
+  data: SchoolUpdateWithoutStudentsInput!
+  where: SchoolWhereInput
+}
+
 input SchoolUpdateWithoutCoursesInput {
   Memberships: AclMembershipUpdateManyWithoutSchoolNestedInput
+  Students: StudentUpdateManyWithoutSchoolNestedInput
   bannerPath: NullableStringFieldUpdateOperationsInput
   createdAt: DateTimeFieldUpdateOperationsInput
   description: NullableStringFieldUpdateOperationsInput
@@ -10278,6 +10442,25 @@ input SchoolUpdateWithoutCoursesInput {
 
 input SchoolUpdateWithoutMembershipsInput {
   Courses: CourseUpdateManyWithoutSchoolNestedInput
+  Students: StudentUpdateManyWithoutSchoolNestedInput
+  bannerPath: NullableStringFieldUpdateOperationsInput
+  createdAt: DateTimeFieldUpdateOperationsInput
+  description: NullableStringFieldUpdateOperationsInput
+  faviconPath: NullableStringFieldUpdateOperationsInput
+  id: StringFieldUpdateOperationsInput
+  institutionCode: StringFieldUpdateOperationsInput
+  isActive: BoolFieldUpdateOperationsInput
+  logoFullPath: NullableStringFieldUpdateOperationsInput
+  logoMarkPath: NullableStringFieldUpdateOperationsInput
+  name: StringFieldUpdateOperationsInput
+  primaryColor: NullableStringFieldUpdateOperationsInput
+  secondaryColor: NullableStringFieldUpdateOperationsInput
+  updatedAt: DateTimeFieldUpdateOperationsInput
+}
+
+input SchoolUpdateWithoutStudentsInput {
+  Courses: CourseUpdateManyWithoutSchoolNestedInput
+  Memberships: AclMembershipUpdateManyWithoutSchoolNestedInput
   bannerPath: NullableStringFieldUpdateOperationsInput
   createdAt: DateTimeFieldUpdateOperationsInput
   description: NullableStringFieldUpdateOperationsInput
@@ -10305,12 +10488,19 @@ input SchoolUpsertWithoutMembershipsInput {
   where: SchoolWhereInput
 }
 
+input SchoolUpsertWithoutStudentsInput {
+  create: SchoolCreateWithoutStudentsInput!
+  update: SchoolUpdateWithoutStudentsInput!
+  where: SchoolWhereInput
+}
+
 input SchoolWhereInput {
   AND: [SchoolWhereInput!]
   Courses: CourseListRelationFilter
   Memberships: AclMembershipListRelationFilter
   NOT: [SchoolWhereInput!]
   OR: [SchoolWhereInput!]
+  Students: StudentListRelationFilter
   bannerPath: StringNullableFilter
   createdAt: DateTimeFilter
   description: StringNullableFilter
@@ -10332,6 +10522,7 @@ input SchoolWhereUniqueInput {
   Memberships: AclMembershipListRelationFilter
   NOT: [SchoolWhereInput!]
   OR: [SchoolWhereInput!]
+  Students: StudentListRelationFilter
   bannerPath: StringNullableFilter
   createdAt: DateTimeFilter
   description: StringNullableFilter
@@ -10412,11 +10603,13 @@ type Student {
   Captures: [CorrectionCapture!]
   Corrections: [CorrectionExam!]
   Enrollments: [StudentKlass!]
+  School: School!
   User: User!
   _count: StudentCount!
   createdAt: DateTime!
   id: ID!
   registrationNumber: String!
+  schoolId: String!
   updatedAt: DateTime!
   userId: String!
 }
@@ -10425,6 +10618,26 @@ type StudentCount {
   Captures: Int!
   Corrections: Int!
   Enrollments: Int!
+}
+
+input StudentCreateManySchoolInput {
+  createdAt: DateTime
+  id: String
+  registrationNumber: String!
+  updatedAt: DateTime
+  userId: String!
+}
+
+input StudentCreateManySchoolInputEnvelope {
+  data: [StudentCreateManySchoolInput!]!
+  skipDuplicates: Boolean
+}
+
+input StudentCreateNestedManyWithoutSchoolInput {
+  connect: [StudentWhereUniqueInput!]
+  connectOrCreate: [StudentCreateOrConnectWithoutSchoolInput!]
+  create: [StudentCreateWithoutSchoolInput!]
+  createMany: StudentCreateManySchoolInputEnvelope
 }
 
 input StudentCreateNestedOneWithoutCapturesInput {
@@ -10466,6 +10679,11 @@ input StudentCreateOrConnectWithoutEnrollmentsInput {
   where: StudentWhereUniqueInput!
 }
 
+input StudentCreateOrConnectWithoutSchoolInput {
+  create: StudentCreateWithoutSchoolInput!
+  where: StudentWhereUniqueInput!
+}
+
 input StudentCreateOrConnectWithoutUserInput {
   create: StudentCreateWithoutUserInput!
   where: StudentWhereUniqueInput!
@@ -10474,6 +10692,7 @@ input StudentCreateOrConnectWithoutUserInput {
 input StudentCreateWithoutCapturesInput {
   Corrections: CorrectionExamCreateNestedManyWithoutStudentInput
   Enrollments: StudentKlassCreateNestedManyWithoutStudentInput
+  School: SchoolCreateNestedOneWithoutStudentsInput!
   User: UserCreateNestedOneWithoutStudentInput!
   createdAt: DateTime
   id: String
@@ -10484,6 +10703,7 @@ input StudentCreateWithoutCapturesInput {
 input StudentCreateWithoutCorrectionsInput {
   Captures: CorrectionCaptureCreateNestedManyWithoutStudentInput
   Enrollments: StudentKlassCreateNestedManyWithoutStudentInput
+  School: SchoolCreateNestedOneWithoutStudentsInput!
   User: UserCreateNestedOneWithoutStudentInput!
   createdAt: DateTime
   id: String
@@ -10494,6 +10714,18 @@ input StudentCreateWithoutCorrectionsInput {
 input StudentCreateWithoutEnrollmentsInput {
   Captures: CorrectionCaptureCreateNestedManyWithoutStudentInput
   Corrections: CorrectionExamCreateNestedManyWithoutStudentInput
+  School: SchoolCreateNestedOneWithoutStudentsInput!
+  User: UserCreateNestedOneWithoutStudentInput!
+  createdAt: DateTime
+  id: String
+  registrationNumber: String!
+  updatedAt: DateTime
+}
+
+input StudentCreateWithoutSchoolInput {
+  Captures: CorrectionCaptureCreateNestedManyWithoutStudentInput
+  Corrections: CorrectionExamCreateNestedManyWithoutStudentInput
+  Enrollments: StudentKlassCreateNestedManyWithoutStudentInput
   User: UserCreateNestedOneWithoutStudentInput!
   createdAt: DateTime
   id: String
@@ -10505,10 +10737,70 @@ input StudentCreateWithoutUserInput {
   Captures: CorrectionCaptureCreateNestedManyWithoutStudentInput
   Corrections: CorrectionExamCreateNestedManyWithoutStudentInput
   Enrollments: StudentKlassCreateNestedManyWithoutStudentInput
+  School: SchoolCreateNestedOneWithoutStudentsInput!
   createdAt: DateTime
   id: String
   registrationNumber: String!
   updatedAt: DateTime
+}
+
+type StudentDetailExamObject {
+  attemptCount: Int!
+  bestScore: Float
+  courseId: String!
+  courseName: String!
+  examId: String!
+  isActive: Boolean!
+  klassId: String!
+  klassName: String!
+  lastCorrectionAt: DateTime
+  title: String!
+}
+
+type StudentDetailKlassObject {
+  active: Boolean!
+  courseId: String!
+  courseName: String!
+  endedAt: DateTime
+  klassId: String!
+  klassName: String!
+  startedAt: DateTime!
+}
+
+type StudentDetailObject {
+  activeEnrollmentCount: Int!
+  averageScore: Float
+  createdAt: DateTime!
+  currentKlassId: String
+  currentKlassName: String
+  email: String!
+  examCount: Int!
+  exams: [StudentDetailExamObject!]!
+  klasses: [StudentDetailKlassObject!]!
+  name: String
+  registrationNumber: String!
+  resultCount: Int!
+  results: [StudentDetailResultObject!]!
+  schoolId: String!
+  studentId: String!
+  updatedAt: DateTime!
+  userId: String!
+}
+
+type StudentDetailResultObject {
+  attempt: Int!
+  correctAnswersCount: Int!
+  correctionId: String!
+  courseId: String!
+  courseName: String!
+  examId: String!
+  examTitle: String!
+  klassId: String!
+  klassName: String!
+  questionCount: Int!
+  score: Float
+  status: CorrectionStatus!
+  submittedAt: DateTime!
 }
 
 type StudentKlass {
@@ -10717,14 +11009,67 @@ input StudentKlassWhereUniqueInput {
   studentId_klassId_startedAt: StudentKlassStudentIdKlassIdStartedAtCompoundUniqueInput
 }
 
+input StudentListRelationFilter {
+  every: StudentWhereInput
+  none: StudentWhereInput
+  some: StudentWhereInput
+}
+
 input StudentNullableScalarRelationFilter {
   is: StudentWhereInput
   isNot: StudentWhereInput
 }
 
+input StudentOrderByRelationAggregateInput {
+  _count: SortOrder
+}
+
 input StudentScalarRelationFilter {
   is: StudentWhereInput
   isNot: StudentWhereInput
+}
+
+input StudentScalarWhereInput {
+  AND: [StudentScalarWhereInput!]
+  NOT: [StudentScalarWhereInput!]
+  OR: [StudentScalarWhereInput!]
+  createdAt: DateTimeFilter
+  id: StringFilter
+  registrationNumber: StringFilter
+  schoolId: StringFilter
+  updatedAt: DateTimeFilter
+  userId: StringFilter
+}
+
+input StudentSchoolIdRegistrationNumberCompoundUniqueInput {
+  registrationNumber: String!
+  schoolId: String!
+}
+
+input StudentUpdateManyMutationInput {
+  createdAt: DateTimeFieldUpdateOperationsInput
+  id: StringFieldUpdateOperationsInput
+  registrationNumber: StringFieldUpdateOperationsInput
+  updatedAt: DateTimeFieldUpdateOperationsInput
+}
+
+input StudentUpdateManyWithWhereWithoutSchoolInput {
+  data: StudentUpdateManyMutationInput!
+  where: StudentScalarWhereInput!
+}
+
+input StudentUpdateManyWithoutSchoolNestedInput {
+  connect: [StudentWhereUniqueInput!]
+  connectOrCreate: [StudentCreateOrConnectWithoutSchoolInput!]
+  create: [StudentCreateWithoutSchoolInput!]
+  createMany: StudentCreateManySchoolInputEnvelope
+  delete: [StudentWhereUniqueInput!]
+  deleteMany: [StudentScalarWhereInput!]
+  disconnect: [StudentWhereUniqueInput!]
+  set: [StudentWhereUniqueInput!]
+  update: [StudentUpdateWithWhereUniqueWithoutSchoolInput!]
+  updateMany: [StudentUpdateManyWithWhereWithoutSchoolInput!]
+  upsert: [StudentUpsertWithWhereUniqueWithoutSchoolInput!]
 }
 
 input StudentUpdateOneRequiredWithoutCorrectionsNestedInput {
@@ -10783,9 +11128,15 @@ input StudentUpdateToOneWithWhereWithoutUserInput {
   where: StudentWhereInput
 }
 
+input StudentUpdateWithWhereUniqueWithoutSchoolInput {
+  data: StudentUpdateWithoutSchoolInput!
+  where: StudentWhereUniqueInput!
+}
+
 input StudentUpdateWithoutCapturesInput {
   Corrections: CorrectionExamUpdateManyWithoutStudentNestedInput
   Enrollments: StudentKlassUpdateManyWithoutStudentNestedInput
+  School: SchoolUpdateOneRequiredWithoutStudentsNestedInput
   User: UserUpdateOneRequiredWithoutStudentNestedInput
   createdAt: DateTimeFieldUpdateOperationsInput
   id: StringFieldUpdateOperationsInput
@@ -10796,6 +11147,7 @@ input StudentUpdateWithoutCapturesInput {
 input StudentUpdateWithoutCorrectionsInput {
   Captures: CorrectionCaptureUpdateManyWithoutStudentNestedInput
   Enrollments: StudentKlassUpdateManyWithoutStudentNestedInput
+  School: SchoolUpdateOneRequiredWithoutStudentsNestedInput
   User: UserUpdateOneRequiredWithoutStudentNestedInput
   createdAt: DateTimeFieldUpdateOperationsInput
   id: StringFieldUpdateOperationsInput
@@ -10806,6 +11158,18 @@ input StudentUpdateWithoutCorrectionsInput {
 input StudentUpdateWithoutEnrollmentsInput {
   Captures: CorrectionCaptureUpdateManyWithoutStudentNestedInput
   Corrections: CorrectionExamUpdateManyWithoutStudentNestedInput
+  School: SchoolUpdateOneRequiredWithoutStudentsNestedInput
+  User: UserUpdateOneRequiredWithoutStudentNestedInput
+  createdAt: DateTimeFieldUpdateOperationsInput
+  id: StringFieldUpdateOperationsInput
+  registrationNumber: StringFieldUpdateOperationsInput
+  updatedAt: DateTimeFieldUpdateOperationsInput
+}
+
+input StudentUpdateWithoutSchoolInput {
+  Captures: CorrectionCaptureUpdateManyWithoutStudentNestedInput
+  Corrections: CorrectionExamUpdateManyWithoutStudentNestedInput
+  Enrollments: StudentKlassUpdateManyWithoutStudentNestedInput
   User: UserUpdateOneRequiredWithoutStudentNestedInput
   createdAt: DateTimeFieldUpdateOperationsInput
   id: StringFieldUpdateOperationsInput
@@ -10817,10 +11181,17 @@ input StudentUpdateWithoutUserInput {
   Captures: CorrectionCaptureUpdateManyWithoutStudentNestedInput
   Corrections: CorrectionExamUpdateManyWithoutStudentNestedInput
   Enrollments: StudentKlassUpdateManyWithoutStudentNestedInput
+  School: SchoolUpdateOneRequiredWithoutStudentsNestedInput
   createdAt: DateTimeFieldUpdateOperationsInput
   id: StringFieldUpdateOperationsInput
   registrationNumber: StringFieldUpdateOperationsInput
   updatedAt: DateTimeFieldUpdateOperationsInput
+}
+
+input StudentUpsertWithWhereUniqueWithoutSchoolInput {
+  create: StudentCreateWithoutSchoolInput!
+  update: StudentUpdateWithoutSchoolInput!
+  where: StudentWhereUniqueInput!
 }
 
 input StudentUpsertWithoutCapturesInput {
@@ -10854,10 +11225,12 @@ input StudentWhereInput {
   Enrollments: StudentKlassListRelationFilter
   NOT: [StudentWhereInput!]
   OR: [StudentWhereInput!]
+  School: SchoolScalarRelationFilter
   User: UserScalarRelationFilter
   createdAt: DateTimeFilter
   id: StringFilter
   registrationNumber: StringFilter
+  schoolId: StringFilter
   updatedAt: DateTimeFilter
   userId: StringFilter
 }
@@ -10869,10 +11242,13 @@ input StudentWhereUniqueInput {
   Enrollments: StudentKlassListRelationFilter
   NOT: [StudentWhereInput!]
   OR: [StudentWhereInput!]
+  School: SchoolScalarRelationFilter
   User: UserScalarRelationFilter
   createdAt: DateTimeFilter
   id: String
-  registrationNumber: String
+  registrationNumber: StringFilter
+  schoolId: StringFilter
+  schoolId_registrationNumber: StudentSchoolIdRegistrationNumberCompoundUniqueInput
   updatedAt: DateTimeFilter
   userId: String
 }
@@ -10894,6 +11270,14 @@ input UpdateExamInput {
   description: String
   examId: String!
   title: String
+}
+
+input UpdateKlassStudentInput {
+  email: String
+  klassId: String!
+  name: String
+  registrationNumber: String
+  studentId: String!
 }
 
 input UpdateSchoolMemberBasicsInput {

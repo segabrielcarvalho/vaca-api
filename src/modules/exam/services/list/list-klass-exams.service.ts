@@ -20,9 +20,27 @@ export class ListKlassExamsService {
 
       const skip = input.skip ?? 0;
       const take = input.take ?? 20;
+      const search = input.search?.trim();
       const where = {
          klassId: input.klassId,
-         isActive: true,
+         isActive: input.isActive ?? true,
+         OR:
+            search && search.length > 0
+               ? [
+                    {
+                       title: {
+                          contains: search,
+                          mode: 'insensitive' as const,
+                       },
+                    },
+                    {
+                       description: {
+                          contains: search,
+                          mode: 'insensitive' as const,
+                       },
+                    },
+                 ]
+               : undefined,
       };
 
       const [count, rows] = await Promise.all([
@@ -33,7 +51,19 @@ export class ListKlassExamsService {
             take,
             orderBy: [{ updatedAt: 'desc' }],
             include: {
-               TemplateVersion: true,
+               _count: {
+                  select: {
+                     Questions: true,
+                     Corrections: true,
+                     CorrectionSessions: true,
+                     Captures: true,
+                  },
+               },
+               TemplateVersion: {
+                  include: {
+                     Template: true,
+                  },
+               },
             },
          }),
       ]);

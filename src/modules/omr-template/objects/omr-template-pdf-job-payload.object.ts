@@ -1,6 +1,4 @@
-import {
-   OmrTemplatePdfGenerationTrigger,
-} from '../../../../.prisma/client';
+import { OmrTemplatePdfGenerationTrigger } from '../../../../.prisma/client';
 
 export type OmrTemplatePdfJobPayload = {
    templateVersionId: string;

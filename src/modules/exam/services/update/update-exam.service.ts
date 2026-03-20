@@ -24,6 +24,28 @@ export class UpdateExamService {
 
       if (input.answerKey) {
          this.rules.validateAnswerKey(input.answerKey);
+
+         const templateVersion =
+            await this.prisma.omrTemplateVersion.findUnique({
+               where: { id: exam.templateVersionId },
+               select: {
+                  id: true,
+                  layoutJson: true,
+                  compiledGeometryJson: true,
+               },
+            });
+
+         if (!templateVersion) {
+            throw new BadRequestException(
+               'Versão de template da prova não encontrada.',
+            );
+         }
+
+         this.rules.assertTemplateQuestionCountMatchesAnswerKey({
+            answerKeyLength: input.answerKey.length,
+            layoutJson: templateVersion.layoutJson,
+            compiledGeometryJson: templateVersion.compiledGeometryJson,
+         });
       }
 
       await this.prisma.$transaction(async (tx) => {
@@ -68,10 +90,19 @@ export class UpdateExamService {
       return this.prisma.exam.findUniqueOrThrow({
          where: { id: exam.id },
          include: {
+            Klass: {
+               include: {
+                  Course: true,
+               },
+            },
             Questions: {
                orderBy: { number: 'asc' },
             },
-            TemplateVersion: true,
+            TemplateVersion: {
+               include: {
+                  Template: true,
+               },
+            },
          },
       });
    }

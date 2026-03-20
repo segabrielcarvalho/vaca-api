@@ -1,0 +1,75 @@
+import { RoleEnum } from '../../../../../../.prisma/client';
+import { ReactivateExamService } from '../../reactivate/reactivate-exam.service';
+
+describe('ReactivateExamService', () => {
+   let prisma: {
+      exam: {
+         update: jest.Mock;
+      };
+   };
+   let rules: {
+      assertExamPermission: jest.Mock;
+   };
+   let service: ReactivateExamService;
+
+   beforeEach(() => {
+      prisma = {
+         exam: {
+            update: jest.fn(),
+         },
+      };
+      rules = {
+         assertExamPermission: jest.fn(),
+      };
+
+      service = new ReactivateExamService(prisma as any, rules as any);
+   });
+
+   it('deve reativar prova inativa', async () => {
+      rules.assertExamPermission.mockResolvedValue({
+         id: 'exam-1',
+         klassId: 'klass-1',
+         isActive: false,
+      });
+      prisma.exam.update.mockResolvedValue({
+         id: 'exam-1',
+         isActive: true,
+      });
+
+      const result = await service.run({ examId: 'exam-1' }, {
+         id: 'user-1',
+         role: RoleEnum.user,
+      } as any);
+
+      expect(rules.assertExamPermission).toHaveBeenCalledWith({
+         user: { id: 'user-1', role: RoleEnum.user },
+         examId: 'exam-1',
+         permissionCode: 'klass.exam.manage',
+      });
+      expect(prisma.exam.update).toHaveBeenCalledWith({
+         where: { id: 'exam-1' },
+         data: { isActive: true },
+      });
+      expect(result).toEqual({ id: 'exam-1', isActive: true });
+   });
+
+   it('deve manter retorno idempotente quando prova ja estiver ativa', async () => {
+      rules.assertExamPermission.mockResolvedValue({
+         id: 'exam-1',
+         klassId: 'klass-1',
+         isActive: true,
+      });
+
+      const result = await service.run({ examId: 'exam-1' }, {
+         id: 'user-1',
+         role: RoleEnum.user,
+      } as any);
+
+      expect(prisma.exam.update).not.toHaveBeenCalled();
+      expect(result).toEqual({
+         id: 'exam-1',
+         klassId: 'klass-1',
+         isActive: true,
+      });
+   });
+});

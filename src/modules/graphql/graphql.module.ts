@@ -9,7 +9,7 @@ import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigType } from '@nestjs/config';
 import { GraphQLModule as Gql } from '@nestjs/graphql';
-import type { RequestHandler } from 'express';
+import type { Request, RequestHandler } from 'express';
 import depthLimit from 'graphql-depth-limit';
 import type { RedisPubSub } from 'graphql-redis-subscriptions';
 import Keyv from 'keyv';
@@ -26,7 +26,10 @@ import { loadGraphqlUploadMiddleware } from './graphql-upload';
 import { DecimalScalar } from './scalar/decimal.scalar';
 import { UploadScalar } from './scalar/upload.scalar';
 
-type WsExtra = { user?: AuthCurrentUser };
+type WsExtra = {
+   request?: Request;
+   user?: AuthCurrentUser;
+};
 
 @Module({
    imports: [
@@ -119,8 +122,11 @@ type WsExtra = { user?: AuthCurrentUser };
                   ttl: persistedQueryTtl,
                },
                context: async ({ req, res, extra }) => {
-                  if ((extra as WsExtra)?.user) {
-                     return { user: (extra as WsExtra).user, pubSub };
+                  const wsExtra = extra as WsExtra | undefined;
+                  if (wsExtra?.user) {
+                     return wsExtra.request
+                        ? { req: wsExtra.request, user: wsExtra.user, pubSub }
+                        : { user: wsExtra.user, pubSub };
                   }
                   const user =
                      await authContextService.resolveAuthenticatedUserFromRequest(
