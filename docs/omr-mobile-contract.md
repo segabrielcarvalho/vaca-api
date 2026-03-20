@@ -23,7 +23,7 @@ Implementation is already available in `vaca-api-v2` (GraphQL) and `vaca-omr` (R
   - Input: `examId`
   - Output: `CorrectionSession` (`id`, counters, status, timestamps)
 - Mutation `submitCorrectionPhoto(input)`
-  - Input: `sessionId`, `imageBase64`, `threshold?`, `delta?`
+  - Input: `sessionId`, `photoBase64|photoFile`, `threshold?`, `delta?`
   - Output: `CorrectionCapture` with initial `status=queued`
 - Mutation `completeCorrectionSession(input)`
   - Input: `sessionId`
@@ -31,6 +31,8 @@ Implementation is already available in `vaca-api-v2` (GraphQL) and `vaca-omr` (R
 - Query `listCorrectionCaptures(input)`
   - Input: `sessionId`, `skip?`, `take?`
 - Query `listExamCorrections(input)`
+  - Input: `examId`, `skip?`, `take?`
+- Query `listExamCorrectionSessions(input)`
   - Input: `examId`, `skip?`, `take?`
 - Mutation `resolveCorrectionCapture(input)`
   - Input: `captureId`, `status` (`graded` or `needs_review`), optional `reviewReason`, `reviewNotes`
@@ -73,7 +75,6 @@ Each event includes:
 - Response (success):
   - `success: true`
   - `engineVersion`
-  - `qr` (`data`, `points`)
   - `registration` (`value`, `status`)
   - `answers` (question-by-question with `selected`, `isAmbiguous`, `confidence`)
   - `answers_numeric`
@@ -88,7 +89,6 @@ Each event includes:
   - `timings`
 
 ## Assisted Review Rules
-- If QR is missing/invalid/signature-invalid: do **not** auto-grade.
 - If registration is invalid/ambiguous: do **not** auto-grade.
 - If answers are ambiguous: do **not** auto-grade.
 - API marks capture as `needs_review` and stores audit artifacts:
@@ -97,7 +97,6 @@ Each event includes:
   - `overlayImagePath`
 
 ## Security/Validation
-- QR signature is validated in API using `OMR_QR_HMAC_SECRET`.
 - ACL permissions are enforced by scope:
   - `course.template.read`, `course.template.manage`
   - `klass.exam.read`, `klass.exam.manage`

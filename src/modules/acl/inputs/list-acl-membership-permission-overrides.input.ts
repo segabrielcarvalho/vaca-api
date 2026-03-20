@@ -19,4 +19,3 @@ export class ListAclMembershipPermissionOverridesInput {
    @Field(() => Int, { nullable: true })
    skip?: number;
 }
-

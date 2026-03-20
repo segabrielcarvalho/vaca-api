@@ -7,4 +7,3 @@ export class ListAssignableAclPermissionsInput {
    @Field(() => GqlAclScopeType)
    scopeType!: PrismaAclScopeType;
 }
-

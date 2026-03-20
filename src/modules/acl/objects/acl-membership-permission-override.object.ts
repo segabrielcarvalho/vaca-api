@@ -35,4 +35,3 @@ export class AclMembershipPermissionOverrideObject {
    @Field(() => Date)
    updatedAt!: Date;
 }
-

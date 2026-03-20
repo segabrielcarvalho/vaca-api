@@ -10,4 +10,3 @@ export class AclPermissionOptionObject {
    @Field(() => GqlAclScopeType)
    scopeType!: PrismaAclScopeType;
 }
-

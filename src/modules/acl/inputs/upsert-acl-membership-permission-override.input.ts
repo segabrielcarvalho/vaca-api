@@ -23,4 +23,3 @@ export class UpsertAclMembershipPermissionOverrideInput {
    @Field(() => GqlAclMembershipPermissionEffect)
    effect!: PrismaAclMembershipPermissionEffect;
 }
-

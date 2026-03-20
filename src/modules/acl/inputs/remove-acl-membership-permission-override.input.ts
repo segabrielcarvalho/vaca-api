@@ -16,4 +16,3 @@ export class RemoveAclMembershipPermissionOverrideInput {
    @Field()
    permissionCode!: string;
 }
-

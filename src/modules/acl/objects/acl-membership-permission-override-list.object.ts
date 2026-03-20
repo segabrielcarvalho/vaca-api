@@ -9,4 +9,3 @@ export class AclMembershipPermissionOverrideListObject extends DefaultListObject
    @Type(() => AclMembershipPermissionOverrideObject)
    rows!: AclMembershipPermissionOverrideObject[];
 }
-

@@ -94,9 +94,6 @@ enum CorrectionCaptureStatus {
 }
 
 enum CorrectionCaptureReviewReason {
-  qr_missing
-  qr_invalid
-  qr_signature_invalid
   registration_invalid
   registration_ambiguous
   answer_ambiguous
@@ -316,13 +313,19 @@ model Student {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  registrationNumber String @unique
+  schoolId String
+  School   School @relation(fields: [schoolId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  registrationNumber String
   userId             String @unique
   User               User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
   Enrollments StudentKlass[]
   Corrections CorrectionExam[]
   Captures    CorrectionCapture[]
+
+  @@unique([schoolId, registrationNumber])
+  @@index([schoolId])
 }
 
 model Agent {
@@ -405,6 +408,7 @@ model School {
   secondaryColor  String?
 
   Courses     Course[]
+  Students    Student[]
   Memberships AclMembership[]
 }
 
@@ -675,7 +679,6 @@ model OmrTemplateVersionPdfAsset {
   errorMessage    String?
   startedAt       DateTime?
   finishedAt      DateTime?
-  qrPayloadJson   Json?
 
   triggeredByAgentId String?
   TriggeredBy        Agent?  @relation("OmrTemplatePdfAssetTriggeredBy", fields: [triggeredByAgentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
@@ -705,11 +708,9 @@ model CorrectionSession {
   gradedCaptures      Int    @default(0)
   needsReviewCaptures Int    @default(0)
   errorCaptures       Int    @default(0)
-  qrInvalidCaptures   Int    @default(0)
   avgProcessingMs     Float?
   p95ProcessingMs     Float?
   manualReviewRate    Float?
-  qrInvalidRate       Float?
   throughputPerMinute Float?
 
   Captures CorrectionCapture[]
