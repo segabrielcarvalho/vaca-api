@@ -124,7 +124,6 @@ export class OmrTemplateRulesService {
       const pageHeightMm = asNumber(page.heightMm, A4_HEIGHT_MM);
 
       const fixedBlocks = asObject(layout.fixedBlocks);
-      const qrBlock = asObject(fixedBlocks.qr);
       const registrationBlock = asObject(fixedBlocks.registration);
       const questionBlock = asObject(layout.questionsBlock);
 
@@ -267,26 +266,6 @@ export class OmrTemplateRulesService {
          ),
       );
 
-      const qrSizeMm = clamp(
-         asNumber(qrBlock.sizeMm ?? qrBlock.widthMm, 25),
-         12,
-         Math.min(
-            50,
-            pageWidthMm - SAFE_MARGIN_MM * 2,
-            pageHeightMm - SAFE_MARGIN_MM * 2,
-         ),
-      );
-      const qrXmm = clamp(
-         asNumber(qrBlock.xMm, 170),
-         SAFE_MARGIN_MM,
-         Math.max(SAFE_MARGIN_MM, pageWidthMm - SAFE_MARGIN_MM - qrSizeMm),
-      );
-      const qrYmm = clamp(
-         asNumber(qrBlock.yMm, 24),
-         SAFE_MARGIN_MM,
-         Math.max(SAFE_MARGIN_MM, pageHeightMm - SAFE_MARGIN_MM - qrSizeMm),
-      );
-
       return {
          page: {
             format: 'A4',
@@ -328,15 +307,6 @@ export class OmrTemplateRulesService {
                fixed: true,
             },
          ],
-         qr: {
-            xMm: qrXmm,
-            yMm: qrYmm,
-            sizeMm: qrSizeMm,
-            widthMm: qrSizeMm,
-            heightMm: qrSizeMm,
-            fixed: false,
-            hmacSigned: true,
-         },
          registration: {
             type: 'bubble_grid',
             digits: registrationDigits,

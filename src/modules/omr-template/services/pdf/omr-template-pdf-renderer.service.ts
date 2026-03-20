@@ -7,7 +7,6 @@ import {
    type PDFPage,
    type RGB,
 } from 'pdf-lib';
-import QRCode from 'qrcode';
 import { getArucoMarkerPngById } from './aruco-marker-assets.util';
 import { getRegistrationRenderMetrics } from './registration-render-metrics.util';
 
@@ -25,7 +24,6 @@ type RenderTemplatePdfInput = {
    templateName: string;
    layoutJson: unknown;
    compiledGeometryJson: unknown;
-   qrPayload: { payload: string; sig: string };
 };
 
 function asObject(value: unknown): JsonObject {
@@ -189,7 +187,6 @@ export class OmrTemplatePdfRendererService {
    async render(input: RenderTemplatePdfInput): Promise<{
       pdfBuffer: Buffer;
       previewImageBuffer: null;
-      qrPayloadJson: Record<string, unknown>;
    }> {
       const layout = asObject(input.layoutJson);
       const geometry = asObject(input.compiledGeometryJson);
@@ -227,7 +224,6 @@ export class OmrTemplatePdfRendererService {
          fontBold,
       );
 
-      await this.drawQr(page, pdfDoc, pageHeightPt, geometry, input.qrPayload);
       this.drawRegistrationBlock(page, pageHeightPt, geometry, fontBold);
       this.drawQuestionsBlock(
          page,
@@ -243,10 +239,6 @@ export class OmrTemplatePdfRendererService {
       return {
          pdfBuffer: Buffer.from(bytes),
          previewImageBuffer: null,
-         qrPayloadJson: {
-            payload: input.qrPayload.payload,
-            sig: input.qrPayload.sig,
-         },
       };
    }
 
@@ -546,34 +538,6 @@ export class OmrTemplatePdfRendererService {
             thickness: 0.7,
             color: rgb(0.2, 0.2, 0.2),
          });
-      }
-   }
-
-   private async drawQr(
-      page: PDFPage,
-      pdfDoc: PDFDocument,
-      pageHeightPt: number,
-      geometry: JsonObject,
-      qrPayload: { payload: string; sig: string },
-   ) {
-      const qr = asObject(geometry.qr);
-      const sizeMm = asNumber(qr.sizeMm ?? qr.widthMm, 25);
-      const xMm = asNumber(qr.xMm, 170);
-      const yMm = asNumber(qr.yMm, 24);
-      const rect = toPdfRect(pageHeightPt, xMm, yMm, sizeMm, sizeMm);
-
-      const rawData = JSON.stringify({
-         payload: qrPayload.payload,
-         sig: qrPayload.sig,
-      });
-      const qrDataUrl = await QRCode.toDataURL(rawData, {
-         margin: 1,
-         errorCorrectionLevel: 'M',
-      });
-      const decoded = decodeBase64Data(qrDataUrl);
-      if (decoded) {
-         const image = await pdfDoc.embedPng(decoded.bytes);
-         page.drawImage(image, rect);
       }
    }
 

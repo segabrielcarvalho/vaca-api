@@ -12,7 +12,6 @@ import type IS3Provider from '../../../storage/providers/s3/s3.interface';
 import type { OmrTemplatePdfJobPayload } from '../../objects/omr-template-pdf-job-payload.object';
 import { OmrTemplateRulesService } from '../shared/omr-template-rules.service';
 import { OmrTemplatePdfRendererService } from './omr-template-pdf-renderer.service';
-import { OmrTemplateQrSignerService } from './omr-template-qr-signer.service';
 
 @Processor(QUEUES.OMR_TEMPLATE_PDF)
 @Injectable()
@@ -22,7 +21,6 @@ export class OmrTemplatePdfGenerationProcessor extends WorkerHost {
    constructor(
       private readonly prisma: PrismaService,
       private readonly renderer: OmrTemplatePdfRendererService,
-      private readonly qrSigner: OmrTemplateQrSignerService,
       private readonly rules: OmrTemplateRulesService,
       @Inject(STORAGE_PROVIDER)
       private readonly storage: IS3Provider,
@@ -71,13 +69,6 @@ export class OmrTemplatePdfGenerationProcessor extends WorkerHost {
       });
 
       try {
-         const generatedAtIso = new Date().toISOString();
-         const signedQr = this.qrSigner.buildSignedTemplateQr({
-            templateId: asset.TemplateVersion.Template.id,
-            templateVersionId: asset.templateVersionId,
-            version: asset.TemplateVersion.version,
-            generatedAtIso,
-         });
          const normalizedLayout = JSON.parse(
             JSON.stringify(asset.TemplateVersion.layoutJson ?? {}),
          ) as Record<string, unknown>;
@@ -94,10 +85,6 @@ export class OmrTemplatePdfGenerationProcessor extends WorkerHost {
             templateName: asset.TemplateVersion.Template.name,
             layoutJson: normalizedLayout,
             compiledGeometryJson: compiledGeometryJson as unknown,
-            qrPayload: {
-               payload: signedQr.payload,
-               sig: signedQr.sig,
-            },
          });
 
          const folder = `omr/templates/${asset.TemplateVersion.Template.id}/v${asset.TemplateVersion.version}/pdf/g${asset.generationIndex}`;
@@ -121,7 +108,6 @@ export class OmrTemplatePdfGenerationProcessor extends WorkerHost {
                   previewImagePath,
                   finishedAt,
                   errorMessage: null,
-                  qrPayloadJson: this.toJson(rendered.qrPayloadJson),
                },
             });
 

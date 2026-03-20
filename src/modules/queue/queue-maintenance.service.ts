@@ -38,7 +38,9 @@ export class QueueMaintenanceService implements OnModuleInit {
       await Promise.all([
          this.cleanQueue(this.defaultQueue, QUEUES.DEFAULT),
          this.cleanQueue(this.emailQueue, QUEUES.EMAIL),
-         this.cleanQueue(this.correctionOmrQueue, QUEUES.CORRECTION_OMR),
+         ...(cleanFlag === true
+            ? [this.cleanQueue(this.correctionOmrQueue, QUEUES.CORRECTION_OMR)]
+            : []),
          this.cleanQueue(this.omrTemplatePdfQueue, QUEUES.OMR_TEMPLATE_PDF),
       ]);
    }

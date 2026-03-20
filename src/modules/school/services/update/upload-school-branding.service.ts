@@ -1,4 +1,9 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+   BadRequestException,
+   Inject,
+   Injectable,
+   NotFoundException,
+} from '@nestjs/common';
 import { AclScopeType, Prisma } from '../../../../../.prisma/client';
 import { AuthCurrentUser } from '../../../auth/services/auth-context.service';
 import { ScopedAccessService } from '../../../auth/services/shared/scoped-access.service';
@@ -13,7 +18,11 @@ type UploadFileLike = {
    createReadStream: () => NodeJS.ReadableStream;
 };
 
-type UploadReference = UploadFileLike | Promise<UploadFileLike> | null | undefined;
+type UploadReference =
+   | UploadFileLike
+   | Promise<UploadFileLike>
+   | null
+   | undefined;
 
 @Injectable()
 export class UploadSchoolBrandingService {

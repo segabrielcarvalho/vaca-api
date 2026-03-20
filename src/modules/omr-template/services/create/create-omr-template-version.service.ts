@@ -1,4 +1,9 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+   BadRequestException,
+   Inject,
+   Injectable,
+   NotFoundException,
+} from '@nestjs/common';
 import {
    AclScopeType,
    OmrTemplatePdfGenerationStatus,
@@ -48,7 +53,10 @@ export class CreateOmrTemplateVersionService {
 
       const layout = this.rules.parseLayoutJson(input.layoutJson);
       const questionCount = this.rules.resolveQuestionCount(layout);
-      const compiledGeometryJson = this.rules.compileGeometry(layout, questionCount);
+      const compiledGeometryJson = this.rules.compileGeometry(
+         layout,
+         questionCount,
+      );
 
       const [lastVersion, createdByAgentId] = await Promise.all([
          this.prisma.omrTemplateVersion.findFirst({
@@ -64,7 +72,10 @@ export class CreateOmrTemplateVersionService {
       const baseFolder = `omr/templates/${template.id}/v${version}`;
       const [pdfPath, previewImagePath] = await Promise.all([
          this.saveBase64Asset(input.pdfBase64, `${baseFolder}/pdf`),
-         this.saveBase64Asset(input.previewImageBase64, `${baseFolder}/preview`),
+         this.saveBase64Asset(
+            input.previewImageBase64,
+            `${baseFolder}/preview`,
+         ),
       ]);
       const hasLegacyPdf = Boolean(pdfPath);
       const now = new Date();
@@ -120,8 +131,13 @@ export class CreateOmrTemplateVersionService {
 
          return createdVersion;
       } catch (error) {
-         this.logger.error('Falha ao criar versão de template OMR', error as Error);
-         throw new BadRequestException('Não foi possível criar a versão do template.');
+         this.logger.error(
+            'Falha ao criar versão de template OMR',
+            error as Error,
+         );
+         throw new BadRequestException(
+            'Não foi possível criar a versão do template.',
+         );
       }
    }
 

@@ -1,5 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { AclScopeType, OmrTemplatePdfGenerationTrigger } from '../../../../../.prisma/client';
+import {
+   AclScopeType,
+   OmrTemplatePdfGenerationTrigger,
+} from '../../../../../.prisma/client';
 import { AuthCurrentUser } from '../../../auth/services/auth-context.service';
 import { ScopedAccessService } from '../../../auth/services/shared/scoped-access.service';
 import { PrismaService } from '../../../prisma/prisma.service';

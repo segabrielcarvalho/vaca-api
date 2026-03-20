@@ -74,7 +74,9 @@ export class QueueOmrTemplatePdfGenerationService {
             },
          );
       } catch (queueError) {
-         const message = (queueError as Error).message || 'Falha ao enfileirar geração de PDF.';
+         const message =
+            (queueError as Error).message ||
+            'Falha ao enfileirar geração de PDF.';
          const failedAt = new Date();
 
          await this.prisma.$transaction(async (tx) => {

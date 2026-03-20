@@ -24,7 +24,8 @@ export class CreateOmrTemplateService {
          scopeId: input.courseId,
       });
 
-      const createdByAgentId = await this.scopedAccessService.getAgentIdByUserId(user.id);
+      const createdByAgentId =
+         await this.scopedAccessService.getAgentIdByUserId(user.id);
 
       try {
          return await this.prisma.omrTemplate.create({
@@ -40,7 +41,9 @@ export class CreateOmrTemplateService {
             error instanceof Prisma.PrismaClientKnownRequestError &&
             error.code === 'P2002'
          ) {
-            throw new BadRequestException('Já existe um template com esse nome no curso.');
+            throw new BadRequestException(
+               'Já existe um template com esse nome no curso.',
+            );
          }
 
          throw error;

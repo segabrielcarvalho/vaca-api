@@ -32,6 +32,7 @@ type FileTypeModule = typeof import('file-type');
 type FileTypeFromBuffer = FileTypeModule['fileTypeFromBuffer'];
 type MimeModule = typeof import('mime');
 type MimeInstance = MimeModule['default'];
+const BASE64_REGEX = /^[A-Za-z0-9+/]*={0,2}$/;
 const hasDefaultExport = (
    value: MimeModule,
 ): value is MimeModule & { default: MimeInstance } =>
@@ -111,10 +112,8 @@ export default class S3Provider implements IS3Provider {
    ): Promise<string> {
       await this.beforeEach();
 
-      const base64Clean = fileInBase64.replace(/^data:.+;base64,/, '');
-      const buffer = Buffer.from(base64Clean, 'base64');
-
-      const contentType = getMimeTypeByBase64(fileInBase64);
+      const { buffer, contentType } =
+         await this.resolveBase64Upload(fileInBase64);
       const mime = await loadMime();
       const extension = mime.getExtension(contentType) ?? 'bin';
       const fileName = `${randomBytes(8).toString('hex')}.${extension}`;
@@ -137,6 +136,50 @@ export default class S3Provider implements IS3Provider {
       );
 
       return key;
+   }
+
+   private async resolveBase64Upload(fileInBase64: string): Promise<{
+      buffer: Buffer;
+      contentType: string;
+   }> {
+      const input = fileInBase64?.trim();
+      if (!input) {
+         throw new Error('Conteúdo base64 vazio.');
+      }
+
+      const dataUriMatch = input.match(/^data:(.+?);base64,([\s\S]+)$/);
+      const base64Payload = (dataUriMatch?.[2] ?? input).replace(/\s+/g, '');
+
+      if (
+         !base64Payload ||
+         !BASE64_REGEX.test(base64Payload) ||
+         base64Payload.length % 4 === 1
+      ) {
+         throw new Error('Conteúdo base64 inválido.');
+      }
+
+      const buffer = Buffer.from(base64Payload, 'base64');
+      if (buffer.byteLength === 0) {
+         throw new Error('Conteúdo base64 inválido.');
+      }
+
+      try {
+         return {
+            buffer,
+            contentType: getMimeTypeByBase64(input),
+         };
+      } catch {
+         const fileTypeFromBuffer = await loadFileTypeFromBuffer();
+         const detectedFile = await fileTypeFromBuffer(buffer);
+         if (!detectedFile?.mime) {
+            throw new Error('Não foi possível identificar o mime type');
+         }
+
+         return {
+            buffer,
+            contentType: detectedFile.mime,
+         };
+      }
    }
 
    public async saveFileFromBuffer(
