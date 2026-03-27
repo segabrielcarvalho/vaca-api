@@ -6,6 +6,7 @@ import {
    CorrectionCaptureReviewReason,
    Prisma,
 } from '../../../../.prisma/client';
+import sharp from 'sharp';
 import correctionConfig from '../config/correction.config';
 import { MyLogger } from '../../logger/my-logger.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -15,6 +16,8 @@ import type IS3Provider from '../../storage/providers/s3/s3.interface';
 import { CorrectionEventStageEnum } from '../enums/correction-event-stage.enum';
 import type { CorrectionJobPayload } from '../objects/correction-job-payload.object';
 import { CorrectionPublisherService } from '../services/correction-publisher.service';
+import { CorrectionCaptureArtifactCleanupService } from '../services/shared/correction-capture-artifact-cleanup.service';
+import { CorrectionExamActivationService } from '../services/shared/correction-exam-activation.service';
 import { CorrectionMetricsService } from '../services/shared/correction-metrics.service';
 
 type OmrProcessResponse = {
@@ -49,6 +52,8 @@ export class CorrectionOmrProcessor extends WorkerHost {
       private readonly prisma: PrismaService,
       private readonly logger: MyLogger,
       private readonly publisher: CorrectionPublisherService,
+      private readonly correctionExamActivation: CorrectionExamActivationService,
+      private readonly artifactCleanup: CorrectionCaptureArtifactCleanupService,
       private readonly metrics: CorrectionMetricsService,
       @Inject(STORAGE_PROVIDER)
       private readonly storage: IS3Provider,
@@ -65,6 +70,13 @@ export class CorrectionOmrProcessor extends WorkerHost {
    async process(job: Job<CorrectionJobPayload>): Promise<void> {
       const startedAtMs = Date.now();
       const { captureId, sessionId, threshold, delta } = job.data;
+      this.operationalLog('correction_omr.job_started', {
+         jobId: job.id,
+         captureId,
+         sessionId,
+         threshold,
+         delta,
+      });
       this.trace('correction_omr.job_started', {
          jobId: job.id,
          captureId,
@@ -130,6 +142,18 @@ export class CorrectionOmrProcessor extends WorkerHost {
             queueLatencyMs,
          },
       });
+      this.trace('correction_omr.capture_processing_published', {
+         jobId: job.id,
+         captureId,
+         sessionId,
+         queueLatencyMs,
+      });
+      this.operationalLog('correction_omr.capture_processing', {
+         jobId: job.id,
+         captureId,
+         sessionId,
+         queueLatencyMs,
+      });
 
       if (!capture.Exam.TemplateVersion) {
          await this.markNeedsReview({
@@ -166,6 +190,9 @@ export class CorrectionOmrProcessor extends WorkerHost {
 
       let omrResponse: OmrProcessResponse;
       try {
+         const masterAnswers = capture.Exam.Questions.map((question) =>
+            Number.isInteger(question.correct) ? question.correct : null,
+         );
          this.trace('correction_omr.omr_request_started', {
             jobId: job.id,
             captureId,
@@ -193,6 +220,7 @@ export class CorrectionOmrProcessor extends WorkerHost {
                      imageBase64: originalBuffer.toString('base64'),
                      compiledGeometryJson:
                         capture.Exam.TemplateVersion.compiledGeometryJson,
+                     masterAnswers,
                      threshold,
                      delta,
                   }),
@@ -206,6 +234,19 @@ export class CorrectionOmrProcessor extends WorkerHost {
 
             omrResponse = (await response.json()) as OmrProcessResponse;
             this.trace('correction_omr.omr_response_received', {
+               jobId: job.id,
+               captureId,
+               sessionId,
+               success: omrResponse.success ?? false,
+               engineVersion: omrResponse.engineVersion ?? 'unknown',
+               registrationStatus: omrResponse.registration?.status ?? null,
+               answersCount: Array.isArray(omrResponse.answers)
+                  ? omrResponse.answers.length
+                  : Array.isArray(omrResponse.answers_numeric)
+                    ? omrResponse.answers_numeric.length
+                  : 0,
+            });
+            this.operationalLog('correction_omr.omr_response_received', {
                jobId: job.id,
                captureId,
                sessionId,
@@ -238,16 +279,13 @@ export class CorrectionOmrProcessor extends WorkerHost {
          });
          const omrPayload = this.toJson(omrResponse);
 
-         const [rectifiedImagePath, overlayImagePath] = await Promise.all([
-            this.saveBase64Artifact(
-               omrResponse.images?.rectifiedBase64,
-               `corrections/sessions/${sessionId}/rectified`,
-            ),
-            this.saveBase64Artifact(
-               omrResponse.images?.overlayBase64,
-               `corrections/sessions/${sessionId}/overlay`,
-            ),
-         ]);
+         const overlayImagePath = await this.saveReviewPreviewArtifact({
+            captureId,
+            sessionId,
+            overlayBase64: omrResponse.images?.overlayBase64,
+            originalImagePath: capture.originalImagePath,
+         });
+         const rectifiedImagePath = undefined;
 
          this.trace('correction_omr.artifacts_processed', {
             jobId: job.id,
@@ -258,18 +296,16 @@ export class CorrectionOmrProcessor extends WorkerHost {
          });
 
          if (!omrResponse.success) {
-            await this.markNeedsReview({
+            await this.discardCapture({
                captureId,
                sessionId,
                startedAtMs,
-               reason: CorrectionCaptureReviewReason.omr_error,
-               errorMessage:
+               reason: 'omr_unreadable',
+               message:
                   omrResponse.error?.message ||
                   'OMR não conseguiu ler a folha.',
-               rectifiedImagePath,
+               originalImagePath: capture.originalImagePath,
                overlayImagePath,
-               detectionPayload,
-               omrPayload,
             });
             return;
          }
@@ -278,35 +314,36 @@ export class CorrectionOmrProcessor extends WorkerHost {
             .trim()
             .toLowerCase();
          if (registrationStatus === 'ambiguous') {
-            await this.markNeedsReview({
+            await this.discardCapture({
                captureId,
                sessionId,
                startedAtMs,
-               reason: CorrectionCaptureReviewReason.registration_ambiguous,
-               errorMessage: 'Matrícula ambígua na folha.',
-               rectifiedImagePath,
+               reason: 'registration_ambiguous',
+               message: 'Matrícula ambígua na folha.',
+               originalImagePath: capture.originalImagePath,
                overlayImagePath,
-               detectionPayload,
-               omrPayload,
-               engineVersion: omrResponse.engineVersion,
             });
             return;
          }
 
          const registrationNumber = omrResponse.registration?.value ?? null;
+         this.trace('correction_omr.registration_resolved', {
+            jobId: job.id,
+            captureId,
+            sessionId,
+            registrationStatus,
+            hasRegistrationNumber: Boolean(registrationNumber),
+         });
 
          if (!registrationNumber) {
-            await this.markNeedsReview({
+            await this.discardCapture({
                captureId,
                sessionId,
                startedAtMs,
-               reason: CorrectionCaptureReviewReason.registration_invalid,
-               errorMessage: 'Matrícula não identificada na folha.',
-               rectifiedImagePath,
+               reason: 'registration_missing',
+               message: 'Matrícula não identificada na folha.',
+               originalImagePath: capture.originalImagePath,
                overlayImagePath,
-               detectionPayload,
-               omrPayload,
-               engineVersion: omrResponse.engineVersion,
             });
             return;
          }
@@ -320,21 +357,23 @@ export class CorrectionOmrProcessor extends WorkerHost {
             },
             select: { id: true },
          });
+         this.trace('correction_omr.student_lookup_finished', {
+            jobId: job.id,
+            captureId,
+            sessionId,
+            registrationNumber,
+            studentId: student?.id ?? null,
+         });
 
          if (!student) {
-            await this.markNeedsReview({
+            await this.discardCapture({
                captureId,
                sessionId,
                startedAtMs,
-               reason: CorrectionCaptureReviewReason.registration_invalid,
-               errorMessage:
-                  'Matrícula não encontrada na base para esta correção.',
-               rectifiedImagePath,
+               reason: 'registration_student_missing',
+               message: 'Matrícula não encontrada na base para esta correção.',
+               originalImagePath: capture.originalImagePath,
                overlayImagePath,
-               detectionPayload,
-               omrPayload,
-               registrationNumber,
-               engineVersion: omrResponse.engineVersion,
             });
             return;
          }
@@ -343,6 +382,14 @@ export class CorrectionOmrProcessor extends WorkerHost {
             omrResponse,
             capture.Exam.Questions.length,
          );
+         this.trace('correction_omr.answers_normalized', {
+            jobId: job.id,
+            captureId,
+            sessionId,
+            questionCount: capture.Exam.Questions.length,
+            hasAmbiguity: answers.hasAmbiguity,
+            answeredCount: answers.values.filter((value) => value !== null).length,
+         });
 
          if (answers.hasAmbiguity) {
             await this.markNeedsReview({
@@ -351,7 +398,7 @@ export class CorrectionOmrProcessor extends WorkerHost {
                startedAtMs,
                reason: CorrectionCaptureReviewReason.answer_ambiguous,
                errorMessage: 'Folha com ambiguidades de marcação.',
-               rectifiedImagePath,
+               rectifiedImagePath: undefined,
                overlayImagePath,
                detectionPayload,
                omrPayload,
@@ -401,74 +448,130 @@ export class CorrectionOmrProcessor extends WorkerHost {
             });
          }
 
-         const attempt =
-            (await this.prisma.correctionExam.count({
-               where: {
-                  examId: capture.examId,
-                  studentId: student.id,
-               },
-            })) + 1;
-
          const processingMs = Math.max(0, Date.now() - startedAtMs);
-
-         const correction = await this.prisma.$transaction(async (tx) => {
-            const createdCorrection = await tx.correctionExam.create({
-               data: {
-                  examId: capture.examId,
-                  studentId: student.id,
-                  filePath: capture.originalImagePath,
-                  attempt,
-                  score,
-                  status: 'graded',
-                  metadata: {
-                     source: 'omr_v2',
-                     captureId,
-                     omrEngineVersion: omrResponse.engineVersion ?? 'unknown',
-                  } as Prisma.InputJsonValue,
-               },
-            });
-
-            await tx.correctionQuestion.createMany({
-               data: correctionItems.map((item) => ({
-                  correctionId: createdCorrection.id,
-                  questionId: item.questionId,
-                  selected: item.selected,
-                  isCorrect: item.isCorrect,
-               })),
-            });
-
-            await tx.correctionCapture.update({
-               where: { id: capture.id },
-               data: {
-                  status: 'graded',
-                  reviewReasons: [],
-                  reviewNotes: null,
-                  errorMessage: null,
-                  correctionExamId: createdCorrection.id,
-                  studentId: student.id,
-                  registrationNumber,
-                  engineVersion: omrResponse.engineVersion ?? null,
-                  processingMs,
-                  rectifiedImagePath,
-                  overlayImagePath,
-                  detectionPayload,
-                  omrPayload,
-               },
-            });
-
-            return createdCorrection;
+         this.trace('correction_omr.grading_computed', {
+            jobId: job.id,
+            captureId,
+            sessionId,
+            score,
+            correctAnswersCount,
+            correctionItemCount: correctionItems.length,
+            processingMs,
          });
+
+         const correctionResult = await this.prisma.$transaction(
+            async (tx) => {
+               this.trace('correction_omr.transaction_started', {
+                  jobId: job.id,
+                  captureId,
+                  sessionId,
+                  studentId: student.id,
+               });
+               const createdCorrection =
+                  await this.correctionExamActivation.createLatestActiveCorrection(
+                     tx,
+                     {
+                        examId: capture.examId,
+                        studentId: student.id,
+                        filePath:
+                           overlayImagePath ?? capture.originalImagePath,
+                        score,
+                        status: 'graded',
+                        metadata: {
+                           source: 'omr_v2',
+                           captureId,
+                           omrEngineVersion:
+                              omrResponse.engineVersion ?? 'unknown',
+                        } as Prisma.InputJsonValue,
+                     },
+                  );
+               this.trace('correction_omr.correction_exam_upserted', {
+                  jobId: job.id,
+                  captureId,
+                  sessionId,
+                  correctionId: createdCorrection.correction.id,
+                  attempt: createdCorrection.correction.attempt,
+                  replacedSessionIds: createdCorrection.replacedSessionIds,
+               });
+
+               await tx.correctionQuestion.createMany({
+                  data: correctionItems.map((item) => ({
+                     correctionId: createdCorrection.correction.id,
+                     questionId: item.questionId,
+                     selected: item.selected,
+                     isCorrect: item.isCorrect,
+                  })),
+               });
+               this.trace('correction_omr.questions_persisted', {
+                  jobId: job.id,
+                  captureId,
+                  sessionId,
+                  correctionId: createdCorrection.correction.id,
+                  questionCount: correctionItems.length,
+               });
+
+               await tx.correctionCapture.update({
+                  where: { id: capture.id },
+                  data: {
+                     status: 'graded',
+                     reviewReasons: [],
+                     reviewNotes: null,
+                     errorMessage: null,
+                     correctionExamId: createdCorrection.correction.id,
+                     studentId: student.id,
+                     registrationNumber,
+                     engineVersion: omrResponse.engineVersion ?? null,
+                     processingMs,
+                     rectifiedImagePath,
+                     overlayImagePath,
+                     detectionPayload,
+                     omrPayload,
+                  },
+               });
+               this.trace('correction_omr.capture_marked_graded', {
+                  jobId: job.id,
+                  captureId,
+                  sessionId,
+                  correctionId: createdCorrection.correction.id,
+               });
+
+               return createdCorrection;
+            },
+            {
+               isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+            },
+         );
 
          this.trace('correction_omr.capture_graded', {
             jobId: job.id,
             captureId,
             sessionId,
-            correctionId: correction.id,
+            correctionId: correctionResult.correction.id,
             correctAnswersCount,
             questionCount: capture.Exam.Questions.length,
             score,
-            attempt,
+            attempt: correctionResult.correction.attempt,
             processingMs,
+         });
+         this.operationalLog('correction_omr.capture_graded', {
+            jobId: job.id,
+            captureId,
+            sessionId,
+            correctionId: correctionResult.correction.id,
+            correctAnswersCount,
+            questionCount: capture.Exam.Questions.length,
+            score,
+            attempt: correctionResult.correction.attempt,
+            processingMs,
+         });
+
+         await this.artifactCleanup.cleanupReplacedCaptureArtifacts({
+            replacedCaptureArtifacts: correctionResult.replacedCaptureArtifacts,
+            preservedPaths: [
+               overlayImagePath ?? capture.originalImagePath,
+               rectifiedImagePath,
+            ],
+            source: 'correction_omr',
          });
 
          await this.publisher.publish({
@@ -478,16 +581,25 @@ export class CorrectionOmrProcessor extends WorkerHost {
             durationMs: processingMs,
             payload: {
                captureId,
-               correctionId: correction.id,
+               correctionId: correctionResult.correction.id,
                correctAnswersCount,
                questionCount: capture.Exam.Questions.length,
                score,
-               attempt,
+               attempt: correctionResult.correction.attempt,
                registrationNumber,
             },
          });
+         this.trace('correction_omr.capture_graded_published', {
+            jobId: job.id,
+            captureId,
+            sessionId,
+            correctionId: correctionResult.correction.id,
+         });
 
-         await this.refreshMetricsSafely(sessionId);
+         await this.refreshSessionsMetrics([
+            sessionId,
+            ...correctionResult.replacedSessionIds,
+         ]);
       } catch (error) {
          await this.markError({
             captureId,
@@ -574,6 +686,14 @@ export class CorrectionOmrProcessor extends WorkerHost {
       engineVersion?: string;
    }) {
       const processingMs = Math.max(0, Date.now() - input.startedAtMs);
+      this.trace('correction_omr.mark_needs_review_started', {
+         captureId: input.captureId,
+         sessionId: input.sessionId,
+         reason: input.reason,
+         processingMs,
+         hasRegistrationNumber: Boolean(input.registrationNumber),
+         studentId: input.studentId ?? null,
+      });
 
       await this.prisma.correctionCapture.update({
          where: { id: input.captureId },
@@ -591,6 +711,11 @@ export class CorrectionOmrProcessor extends WorkerHost {
             engineVersion: input.engineVersion,
          },
       });
+      this.trace('correction_omr.mark_needs_review_capture_updated', {
+         captureId: input.captureId,
+         sessionId: input.sessionId,
+         reason: input.reason,
+      });
 
       await this.publisher.publish({
          sessionId: input.sessionId,
@@ -603,8 +728,20 @@ export class CorrectionOmrProcessor extends WorkerHost {
             errorMessage: input.errorMessage,
          },
       });
+      this.trace('correction_omr.mark_needs_review_published', {
+         captureId: input.captureId,
+         sessionId: input.sessionId,
+         reason: input.reason,
+      });
 
       this.trace('correction_omr.capture_needs_review', {
+         captureId: input.captureId,
+         sessionId: input.sessionId,
+         reason: input.reason,
+         processingMs,
+         errorMessage: input.errorMessage,
+      });
+      this.operationalLog('correction_omr.capture_needs_review', {
          captureId: input.captureId,
          sessionId: input.sessionId,
          reason: input.reason,
@@ -615,6 +752,124 @@ export class CorrectionOmrProcessor extends WorkerHost {
       await this.refreshMetricsSafely(input.sessionId);
    }
 
+   private async discardCapture(input: {
+      captureId: string;
+      sessionId: string;
+      startedAtMs: number;
+      reason:
+         | 'omr_unreadable'
+         | 'registration_ambiguous'
+         | 'registration_missing'
+         | 'registration_student_missing';
+      message: string;
+      originalImagePath?: string;
+      rectifiedImagePath?: string;
+      overlayImagePath?: string;
+   }) {
+      const processingMs = Math.max(0, Date.now() - input.startedAtMs);
+      this.trace('correction_omr.discard_capture_started', {
+         captureId: input.captureId,
+         sessionId: input.sessionId,
+         reason: input.reason,
+         processingMs,
+      });
+      const artifactPaths = Array.from(
+         new Set(
+            [
+               input.originalImagePath,
+               input.rectifiedImagePath,
+               input.overlayImagePath,
+            ].filter(
+               (path): path is string =>
+                  Boolean(path) && !path.startsWith('purged:'),
+            ),
+         ),
+      );
+      this.trace('correction_omr.discard_capture_artifacts_resolved', {
+         captureId: input.captureId,
+         sessionId: input.sessionId,
+         artifactPaths,
+      });
+
+      const artifactDeletionResults = await Promise.allSettled(
+         artifactPaths.map((path) => this.storage.deleteFile(path)),
+      );
+      this.trace('correction_omr.discard_capture_artifacts_deleted', {
+         captureId: input.captureId,
+         sessionId: input.sessionId,
+         artifactDeletionResults: artifactDeletionResults.map((result, index) => ({
+            path: artifactPaths[index],
+            status: result.status,
+            reason:
+               result.status === 'rejected'
+                  ? result.reason instanceof Error
+                     ? result.reason.message
+                     : String(result.reason)
+                  : null,
+         })),
+      });
+
+      await this.prisma.$transaction(async (tx) => {
+         this.trace('correction_omr.discard_capture_transaction_started', {
+            captureId: input.captureId,
+            sessionId: input.sessionId,
+         });
+         await tx.correctionSessionEvent.deleteMany({
+            where: {
+               captureId: input.captureId,
+            },
+         });
+         this.trace('correction_omr.discard_capture_events_deleted', {
+            captureId: input.captureId,
+            sessionId: input.sessionId,
+         });
+
+         await tx.correctionCapture.delete({
+            where: {
+               id: input.captureId,
+            },
+         });
+         this.trace('correction_omr.discard_capture_deleted', {
+            captureId: input.captureId,
+            sessionId: input.sessionId,
+         });
+      });
+
+      this.trace('correction_omr.capture_discarded', {
+         captureId: input.captureId,
+         sessionId: input.sessionId,
+         reason: input.reason,
+         processingMs,
+         message: input.message,
+      });
+      this.operationalLog('correction_omr.capture_discarded', {
+         captureId: input.captureId,
+         sessionId: input.sessionId,
+         reason: input.reason,
+         processingMs,
+         message: input.message,
+      });
+
+      await this.publisher.publish({
+         sessionId: input.sessionId,
+         captureId: input.captureId,
+         stage: CorrectionEventStageEnum.CAPTURE_DISCARDED,
+         durationMs: processingMs,
+         payload: {
+            captureId: input.captureId,
+            reason: input.reason,
+            errorMessage: input.message,
+         },
+      });
+      this.trace('correction_omr.capture_discarded_published', {
+         captureId: input.captureId,
+         sessionId: input.sessionId,
+         reason: input.reason,
+      });
+
+      await this.refreshSessionsMetrics([input.sessionId]);
+   }
+
    private async markError(input: {
       captureId: string;
       sessionId: string;
@@ -623,6 +878,12 @@ export class CorrectionOmrProcessor extends WorkerHost {
       extra?: Record<string, unknown>;
    }) {
       const processingMs = Math.max(0, Date.now() - input.startedAtMs);
+      this.trace('correction_omr.mark_error_started', {
+         captureId: input.captureId,
+         sessionId: input.sessionId,
+         processingMs,
+         errorMessage: input.errorMessage,
+      });
 
       await this.prisma.correctionCapture.update({
          where: { id: input.captureId },
@@ -636,6 +897,10 @@ export class CorrectionOmrProcessor extends WorkerHost {
                : undefined,
          },
       });
+      this.trace('correction_omr.mark_error_capture_updated', {
+         captureId: input.captureId,
+         sessionId: input.sessionId,
+      });
 
       await this.publisher.publish({
          sessionId: input.sessionId,
@@ -648,8 +913,18 @@ export class CorrectionOmrProcessor extends WorkerHost {
             ...input.extra,
          },
       });
+      this.trace('correction_omr.mark_error_published', {
+         captureId: input.captureId,
+         sessionId: input.sessionId,
+      });
 
       this.trace('correction_omr.capture_error', {
+         captureId: input.captureId,
+         sessionId: input.sessionId,
+         processingMs,
+         errorMessage: input.errorMessage,
+      });
+      this.operationalLog('correction_omr.capture_error', {
          captureId: input.captureId,
          sessionId: input.sessionId,
          processingMs,
@@ -659,13 +934,87 @@ export class CorrectionOmrProcessor extends WorkerHost {
       await this.refreshMetricsSafely(input.sessionId);
    }
 
-   private async saveBase64Artifact(
-      base64: string | undefined,
-      folder: string,
-   ): Promise<string | undefined> {
-      if (!base64 || base64.trim().length === 0) return undefined;
+   private async saveReviewPreviewArtifact(input: {
+      captureId: string;
+      sessionId: string;
+      overlayBase64?: string;
+      originalImagePath: string;
+   }): Promise<string | undefined> {
+      if (!input.overlayBase64 || input.overlayBase64.trim().length === 0) {
+         this.trace('correction_omr.overlay_missing_using_original', {
+            captureId: input.captureId,
+            sessionId: input.sessionId,
+            originalImagePath: input.originalImagePath,
+         });
+         return input.originalImagePath;
+      }
 
-      return this.storage.saveFileFromBase64(base64, folder);
+      this.trace('correction_omr.overlay_optimization_started', {
+         captureId: input.captureId,
+         sessionId: input.sessionId,
+      });
+      const optimizedBuffer = await this.optimizeOverlay(input.overlayBase64);
+      const key = `corrections/sessions/${input.sessionId}/captures/${input.captureId}/07_overlay_final.jpg`;
+
+      await this.storage.saveFileFromBufferAtKey(
+         optimizedBuffer,
+         key,
+         'image/jpeg',
+      );
+      this.trace('correction_omr.overlay_saved', {
+         captureId: input.captureId,
+         sessionId: input.sessionId,
+         key,
+         bytes: optimizedBuffer.byteLength,
+      });
+
+      try {
+         await this.storage.deleteFile(input.originalImagePath);
+         this.trace('correction_omr.original_deleted_after_overlay_save', {
+            captureId: input.captureId,
+            sessionId: input.sessionId,
+            originalImagePath: input.originalImagePath,
+         });
+      } catch {
+         this.trace('correction_omr.original_delete_failed_after_overlay_save', {
+            captureId: input.captureId,
+            sessionId: input.sessionId,
+            originalImagePath: input.originalImagePath,
+         });
+         // ignore cleanup failures to avoid breaking the correction flow
+      }
+
+      await this.prisma.correctionCapture.update({
+         where: { id: input.captureId },
+         data: {
+            originalImagePath: `purged:${input.captureId}`,
+         },
+      });
+      this.trace('correction_omr.original_marked_purged', {
+         captureId: input.captureId,
+         sessionId: input.sessionId,
+      });
+
+      return key;
+   }
+
+   private async optimizeOverlay(base64: string) {
+      const normalizedBase64 = base64.replace(/^data:.+;base64,/, '').trim();
+      const buffer = Buffer.from(normalizedBase64, 'base64');
+
+      return sharp(buffer)
+         .rotate()
+         .resize({
+            width: 1600,
+            height: 1600,
+            fit: 'inside',
+            withoutEnlargement: true,
+         })
+         .jpeg({
+            quality: 72,
+            mozjpeg: true,
+         })
+         .toBuffer();
    }
 
    private toJson(value: unknown): Prisma.InputJsonValue {
@@ -677,14 +1026,43 @@ export class CorrectionOmrProcessor extends WorkerHost {
       this.logger.debug(event, JSON.parse(JSON.stringify(meta ?? null)) as any);
    }
 
+   private operationalLog(event: string, meta?: Record<string, unknown>) {
+      this.logger.log(
+         JSON.stringify({
+            event,
+            ...(meta ?? {}),
+         }),
+      );
+   }
+
    private async refreshMetricsSafely(sessionId: string) {
       try {
+         this.trace('correction_omr.metrics_refresh_started', {
+            sessionId,
+         });
          await this.metrics.refreshSessionMetrics(sessionId);
+         this.trace('correction_omr.metrics_refresh_succeeded', {
+            sessionId,
+         });
       } catch (error) {
          this.trace('correction_omr.metrics_refresh_failed', {
             sessionId,
             error: (error as Error).message,
          });
       }
+   }
+
+   private async refreshSessionsMetrics(sessionIds: string[]) {
+      this.trace('correction_omr.refresh_sessions_metrics_started', {
+         sessionIds: Array.from(new Set(sessionIds)),
+      });
+      await Promise.all(
+         Array.from(new Set(sessionIds)).map((sessionId) =>
+            this.refreshMetricsSafely(sessionId),
+         ),
+      );
+      this.trace('correction_omr.refresh_sessions_metrics_finished', {
+         sessionIds: Array.from(new Set(sessionIds)),
+      });
    }
 }
