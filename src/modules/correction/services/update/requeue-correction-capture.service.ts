@@ -34,6 +34,7 @@ export class RequeueCorrectionCaptureService {
          select: {
             id: true,
             sessionId: true,
+            correctionExamId: true,
             threshold: true,
             delta: true,
          },
@@ -42,18 +43,29 @@ export class RequeueCorrectionCaptureService {
       const threshold = input.threshold ?? current.threshold ?? 0.5;
       const delta = input.delta ?? current.delta ?? 0.12;
 
-      const updated = await this.prisma.correctionCapture.update({
-         where: { id: captureRef.id },
-         data: {
-            status: 'queued',
-            errorMessage: null,
-            reviewNotes: null,
-            reviewReasons: [],
-            resolvedByAgentId: null,
-            resolvedAt: null,
-            threshold,
-            delta,
-         },
+      const updated = await this.prisma.$transaction(async (tx) => {
+         if (current.correctionExamId) {
+            await tx.correctionExam.delete({
+               where: {
+                  id: current.correctionExamId,
+               },
+            });
+         }
+
+         return tx.correctionCapture.update({
+            where: { id: captureRef.id },
+            data: {
+               status: 'queued',
+               errorMessage: null,
+               reviewNotes: null,
+               reviewReasons: [],
+               resolvedByAgentId: null,
+               resolvedAt: null,
+               correctionExamId: null,
+               threshold,
+               delta,
+            },
+         });
       });
 
       await this.correctionQueue.add(

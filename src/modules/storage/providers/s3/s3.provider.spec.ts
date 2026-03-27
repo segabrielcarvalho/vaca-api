@@ -132,4 +132,25 @@ describe('S3Provider', () => {
          provider.saveFileFromBase64('***base64-invalido***', 'folder'),
       ).rejects.toThrow('Conteúdo base64 inválido.');
    });
+
+   it('mantem o prefixo do bucket quando solicitado para URLs publicas locais', async () => {
+      const { provider } = await createHarness();
+      jest
+         .spyOn(provider, 'getSignedUrl')
+         .mockResolvedValue(
+            'http://localstack:4566/bucket/folder/file.jpg?signature=123',
+         );
+
+      await expect(
+         provider.getCdnSignedUrl(
+            'folder/file.jpg',
+            'localhost:4566',
+            600,
+            true,
+            true,
+         ),
+      ).resolves.toBe(
+         'http://localhost:4566/bucket/folder/file.jpg?signature=123',
+      );
+   });
 });

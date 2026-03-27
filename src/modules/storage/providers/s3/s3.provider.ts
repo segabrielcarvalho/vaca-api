@@ -215,6 +215,37 @@ export default class S3Provider implements IS3Provider {
       return key;
    }
 
+   public async saveFileFromBufferAtKey(
+      buffer: Buffer,
+      key: string,
+      contentType?: string,
+   ): Promise<string> {
+      await this.beforeEach();
+
+      let resolvedContentType = contentType;
+
+      if (!resolvedContentType) {
+         const fileTypeFromBuffer = await loadFileTypeFromBuffer();
+         const result = await fileTypeFromBuffer(buffer);
+         if (!result) throw new Error('Tipo de arquivo desconhecido.');
+         resolvedContentType = result.mime;
+      }
+
+      await this.client.send(
+         new PutObjectCommand({
+            Bucket: this.bucketName,
+            Key: key,
+            Body: buffer,
+            ContentType: resolvedContentType,
+            ContentDisposition: 'inline',
+            CacheControl: 'max-age=31536000, public',
+            ACL: 'private',
+         }),
+      );
+
+      return key;
+   }
+
    public async getMetadata(
       key: string,
    ): Promise<{ size: number; mimeType: string }> {
@@ -315,6 +346,7 @@ export default class S3Provider implements IS3Provider {
       distributionDomain: string,
       expiresIn = 300,
       inline = false,
+      preserveBucketPrefix = false,
    ): Promise<string> {
       const s3Url = await this.getSignedUrl(s3Key, expiresIn, inline);
       const url = new URL(s3Url);
@@ -325,7 +357,7 @@ export default class S3Provider implements IS3Provider {
 
       const prefix = `/${this.bucketName}/`;
 
-      if (url.pathname.startsWith(prefix))
+      if (!preserveBucketPrefix && url.pathname.startsWith(prefix))
          url.pathname = `/${url.pathname.slice(prefix.length)}`;
 
       return url.toString();

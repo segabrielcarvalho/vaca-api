@@ -1336,6 +1336,8 @@ type Agent {
   CreatedOmrTemplates: [OmrTemplate!]
   Memberships: [AclMembership!]
   ResolvedCorrectionCaptures: [CorrectionCapture!]
+  ReviewAuditLogs: [CorrectionCaptureReviewAuditLog!]
+  ReviewOverrides: [CorrectionCaptureReviewOverride!]
   StartedCorrectionSessions: [CorrectionSession!]
   SubmittedCorrectionCaptures: [CorrectionCapture!]
   TriggeredTemplatePdfAssets: [OmrTemplateVersionPdfAsset!]
@@ -1353,6 +1355,8 @@ type AgentCount {
   CreatedOmrTemplates: Int!
   Memberships: Int!
   ResolvedCorrectionCaptures: Int!
+  ReviewAuditLogs: Int!
+  ReviewOverrides: Int!
   StartedCorrectionSessions: Int!
   SubmittedCorrectionCaptures: Int!
   TriggeredTemplatePdfAssets: Int!
@@ -1386,6 +1390,18 @@ input AgentCreateNestedOneWithoutResolvedCorrectionCapturesInput {
   connect: AgentWhereUniqueInput
   connectOrCreate: AgentCreateOrConnectWithoutResolvedCorrectionCapturesInput
   create: AgentCreateWithoutResolvedCorrectionCapturesInput
+}
+
+input AgentCreateNestedOneWithoutReviewAuditLogsInput {
+  connect: AgentWhereUniqueInput
+  connectOrCreate: AgentCreateOrConnectWithoutReviewAuditLogsInput
+  create: AgentCreateWithoutReviewAuditLogsInput
+}
+
+input AgentCreateNestedOneWithoutReviewOverridesInput {
+  connect: AgentWhereUniqueInput
+  connectOrCreate: AgentCreateOrConnectWithoutReviewOverridesInput
+  create: AgentCreateWithoutReviewOverridesInput
 }
 
 input AgentCreateNestedOneWithoutStartedCorrectionSessionsInput {
@@ -1437,6 +1453,16 @@ input AgentCreateOrConnectWithoutResolvedCorrectionCapturesInput {
   where: AgentWhereUniqueInput!
 }
 
+input AgentCreateOrConnectWithoutReviewAuditLogsInput {
+  create: AgentCreateWithoutReviewAuditLogsInput!
+  where: AgentWhereUniqueInput!
+}
+
+input AgentCreateOrConnectWithoutReviewOverridesInput {
+  create: AgentCreateWithoutReviewOverridesInput!
+  where: AgentWhereUniqueInput!
+}
+
 input AgentCreateOrConnectWithoutStartedCorrectionSessionsInput {
   create: AgentCreateWithoutStartedCorrectionSessionsInput!
   where: AgentWhereUniqueInput!
@@ -1462,6 +1488,8 @@ input AgentCreateWithoutCorrectionsInput {
   CreatedOmrTemplates: OmrTemplateCreateNestedManyWithoutCreatedByInput
   Memberships: AclMembershipCreateNestedManyWithoutAgentInput
   ResolvedCorrectionCaptures: CorrectionCaptureCreateNestedManyWithoutResolvedByInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogCreateNestedManyWithoutActorInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideCreateNestedManyWithoutReviewedByInput
   StartedCorrectionSessions: CorrectionSessionCreateNestedManyWithoutStartedByInput
   SubmittedCorrectionCaptures: CorrectionCaptureCreateNestedManyWithoutSubmittedByInput
   TriggeredTemplatePdfAssets: OmrTemplateVersionPdfAssetCreateNestedManyWithoutTriggeredByInput
@@ -1476,6 +1504,8 @@ input AgentCreateWithoutCreatedOmrTemplateVersionsInput {
   CreatedOmrTemplates: OmrTemplateCreateNestedManyWithoutCreatedByInput
   Memberships: AclMembershipCreateNestedManyWithoutAgentInput
   ResolvedCorrectionCaptures: CorrectionCaptureCreateNestedManyWithoutResolvedByInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogCreateNestedManyWithoutActorInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideCreateNestedManyWithoutReviewedByInput
   StartedCorrectionSessions: CorrectionSessionCreateNestedManyWithoutStartedByInput
   SubmittedCorrectionCaptures: CorrectionCaptureCreateNestedManyWithoutSubmittedByInput
   TriggeredTemplatePdfAssets: OmrTemplateVersionPdfAssetCreateNestedManyWithoutTriggeredByInput
@@ -1490,6 +1520,8 @@ input AgentCreateWithoutCreatedOmrTemplatesInput {
   CreatedOmrTemplateVersions: OmrTemplateVersionCreateNestedManyWithoutCreatedByInput
   Memberships: AclMembershipCreateNestedManyWithoutAgentInput
   ResolvedCorrectionCaptures: CorrectionCaptureCreateNestedManyWithoutResolvedByInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogCreateNestedManyWithoutActorInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideCreateNestedManyWithoutReviewedByInput
   StartedCorrectionSessions: CorrectionSessionCreateNestedManyWithoutStartedByInput
   SubmittedCorrectionCaptures: CorrectionCaptureCreateNestedManyWithoutSubmittedByInput
   TriggeredTemplatePdfAssets: OmrTemplateVersionPdfAssetCreateNestedManyWithoutTriggeredByInput
@@ -1504,6 +1536,8 @@ input AgentCreateWithoutMembershipsInput {
   CreatedOmrTemplateVersions: OmrTemplateVersionCreateNestedManyWithoutCreatedByInput
   CreatedOmrTemplates: OmrTemplateCreateNestedManyWithoutCreatedByInput
   ResolvedCorrectionCaptures: CorrectionCaptureCreateNestedManyWithoutResolvedByInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogCreateNestedManyWithoutActorInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideCreateNestedManyWithoutReviewedByInput
   StartedCorrectionSessions: CorrectionSessionCreateNestedManyWithoutStartedByInput
   SubmittedCorrectionCaptures: CorrectionCaptureCreateNestedManyWithoutSubmittedByInput
   TriggeredTemplatePdfAssets: OmrTemplateVersionPdfAssetCreateNestedManyWithoutTriggeredByInput
@@ -1518,6 +1552,40 @@ input AgentCreateWithoutResolvedCorrectionCapturesInput {
   CreatedOmrTemplateVersions: OmrTemplateVersionCreateNestedManyWithoutCreatedByInput
   CreatedOmrTemplates: OmrTemplateCreateNestedManyWithoutCreatedByInput
   Memberships: AclMembershipCreateNestedManyWithoutAgentInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogCreateNestedManyWithoutActorInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideCreateNestedManyWithoutReviewedByInput
+  StartedCorrectionSessions: CorrectionSessionCreateNestedManyWithoutStartedByInput
+  SubmittedCorrectionCaptures: CorrectionCaptureCreateNestedManyWithoutSubmittedByInput
+  TriggeredTemplatePdfAssets: OmrTemplateVersionPdfAssetCreateNestedManyWithoutTriggeredByInput
+  User: UserCreateNestedOneWithoutAgentInput!
+  createdAt: DateTime
+  id: String
+  updatedAt: DateTime
+}
+
+input AgentCreateWithoutReviewAuditLogsInput {
+  Corrections: CorrectionExamCreateNestedManyWithoutGradedByInput
+  CreatedOmrTemplateVersions: OmrTemplateVersionCreateNestedManyWithoutCreatedByInput
+  CreatedOmrTemplates: OmrTemplateCreateNestedManyWithoutCreatedByInput
+  Memberships: AclMembershipCreateNestedManyWithoutAgentInput
+  ResolvedCorrectionCaptures: CorrectionCaptureCreateNestedManyWithoutResolvedByInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideCreateNestedManyWithoutReviewedByInput
+  StartedCorrectionSessions: CorrectionSessionCreateNestedManyWithoutStartedByInput
+  SubmittedCorrectionCaptures: CorrectionCaptureCreateNestedManyWithoutSubmittedByInput
+  TriggeredTemplatePdfAssets: OmrTemplateVersionPdfAssetCreateNestedManyWithoutTriggeredByInput
+  User: UserCreateNestedOneWithoutAgentInput!
+  createdAt: DateTime
+  id: String
+  updatedAt: DateTime
+}
+
+input AgentCreateWithoutReviewOverridesInput {
+  Corrections: CorrectionExamCreateNestedManyWithoutGradedByInput
+  CreatedOmrTemplateVersions: OmrTemplateVersionCreateNestedManyWithoutCreatedByInput
+  CreatedOmrTemplates: OmrTemplateCreateNestedManyWithoutCreatedByInput
+  Memberships: AclMembershipCreateNestedManyWithoutAgentInput
+  ResolvedCorrectionCaptures: CorrectionCaptureCreateNestedManyWithoutResolvedByInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogCreateNestedManyWithoutActorInput
   StartedCorrectionSessions: CorrectionSessionCreateNestedManyWithoutStartedByInput
   SubmittedCorrectionCaptures: CorrectionCaptureCreateNestedManyWithoutSubmittedByInput
   TriggeredTemplatePdfAssets: OmrTemplateVersionPdfAssetCreateNestedManyWithoutTriggeredByInput
@@ -1533,6 +1601,8 @@ input AgentCreateWithoutStartedCorrectionSessionsInput {
   CreatedOmrTemplates: OmrTemplateCreateNestedManyWithoutCreatedByInput
   Memberships: AclMembershipCreateNestedManyWithoutAgentInput
   ResolvedCorrectionCaptures: CorrectionCaptureCreateNestedManyWithoutResolvedByInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogCreateNestedManyWithoutActorInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideCreateNestedManyWithoutReviewedByInput
   SubmittedCorrectionCaptures: CorrectionCaptureCreateNestedManyWithoutSubmittedByInput
   TriggeredTemplatePdfAssets: OmrTemplateVersionPdfAssetCreateNestedManyWithoutTriggeredByInput
   User: UserCreateNestedOneWithoutAgentInput!
@@ -1547,6 +1617,8 @@ input AgentCreateWithoutSubmittedCorrectionCapturesInput {
   CreatedOmrTemplates: OmrTemplateCreateNestedManyWithoutCreatedByInput
   Memberships: AclMembershipCreateNestedManyWithoutAgentInput
   ResolvedCorrectionCaptures: CorrectionCaptureCreateNestedManyWithoutResolvedByInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogCreateNestedManyWithoutActorInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideCreateNestedManyWithoutReviewedByInput
   StartedCorrectionSessions: CorrectionSessionCreateNestedManyWithoutStartedByInput
   TriggeredTemplatePdfAssets: OmrTemplateVersionPdfAssetCreateNestedManyWithoutTriggeredByInput
   User: UserCreateNestedOneWithoutAgentInput!
@@ -1561,6 +1633,8 @@ input AgentCreateWithoutTriggeredTemplatePdfAssetsInput {
   CreatedOmrTemplates: OmrTemplateCreateNestedManyWithoutCreatedByInput
   Memberships: AclMembershipCreateNestedManyWithoutAgentInput
   ResolvedCorrectionCaptures: CorrectionCaptureCreateNestedManyWithoutResolvedByInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogCreateNestedManyWithoutActorInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideCreateNestedManyWithoutReviewedByInput
   StartedCorrectionSessions: CorrectionSessionCreateNestedManyWithoutStartedByInput
   SubmittedCorrectionCaptures: CorrectionCaptureCreateNestedManyWithoutSubmittedByInput
   User: UserCreateNestedOneWithoutAgentInput!
@@ -1575,6 +1649,8 @@ input AgentCreateWithoutUserInput {
   CreatedOmrTemplates: OmrTemplateCreateNestedManyWithoutCreatedByInput
   Memberships: AclMembershipCreateNestedManyWithoutAgentInput
   ResolvedCorrectionCaptures: CorrectionCaptureCreateNestedManyWithoutResolvedByInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogCreateNestedManyWithoutActorInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideCreateNestedManyWithoutReviewedByInput
   StartedCorrectionSessions: CorrectionSessionCreateNestedManyWithoutStartedByInput
   SubmittedCorrectionCaptures: CorrectionCaptureCreateNestedManyWithoutSubmittedByInput
   TriggeredTemplatePdfAssets: OmrTemplateVersionPdfAssetCreateNestedManyWithoutTriggeredByInput
@@ -1639,6 +1715,26 @@ input AgentUpdateOneWithoutResolvedCorrectionCapturesNestedInput {
   disconnect: AgentWhereInput
   update: AgentUpdateToOneWithWhereWithoutResolvedCorrectionCapturesInput
   upsert: AgentUpsertWithoutResolvedCorrectionCapturesInput
+}
+
+input AgentUpdateOneWithoutReviewAuditLogsNestedInput {
+  connect: AgentWhereUniqueInput
+  connectOrCreate: AgentCreateOrConnectWithoutReviewAuditLogsInput
+  create: AgentCreateWithoutReviewAuditLogsInput
+  delete: AgentWhereInput
+  disconnect: AgentWhereInput
+  update: AgentUpdateToOneWithWhereWithoutReviewAuditLogsInput
+  upsert: AgentUpsertWithoutReviewAuditLogsInput
+}
+
+input AgentUpdateOneWithoutReviewOverridesNestedInput {
+  connect: AgentWhereUniqueInput
+  connectOrCreate: AgentCreateOrConnectWithoutReviewOverridesInput
+  create: AgentCreateWithoutReviewOverridesInput
+  delete: AgentWhereInput
+  disconnect: AgentWhereInput
+  update: AgentUpdateToOneWithWhereWithoutReviewOverridesInput
+  upsert: AgentUpsertWithoutReviewOverridesInput
 }
 
 input AgentUpdateOneWithoutStartedCorrectionSessionsNestedInput {
@@ -1706,6 +1802,16 @@ input AgentUpdateToOneWithWhereWithoutResolvedCorrectionCapturesInput {
   where: AgentWhereInput
 }
 
+input AgentUpdateToOneWithWhereWithoutReviewAuditLogsInput {
+  data: AgentUpdateWithoutReviewAuditLogsInput!
+  where: AgentWhereInput
+}
+
+input AgentUpdateToOneWithWhereWithoutReviewOverridesInput {
+  data: AgentUpdateWithoutReviewOverridesInput!
+  where: AgentWhereInput
+}
+
 input AgentUpdateToOneWithWhereWithoutStartedCorrectionSessionsInput {
   data: AgentUpdateWithoutStartedCorrectionSessionsInput!
   where: AgentWhereInput
@@ -1731,6 +1837,8 @@ input AgentUpdateWithoutCorrectionsInput {
   CreatedOmrTemplates: OmrTemplateUpdateManyWithoutCreatedByNestedInput
   Memberships: AclMembershipUpdateManyWithoutAgentNestedInput
   ResolvedCorrectionCaptures: CorrectionCaptureUpdateManyWithoutResolvedByNestedInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogUpdateManyWithoutActorNestedInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideUpdateManyWithoutReviewedByNestedInput
   StartedCorrectionSessions: CorrectionSessionUpdateManyWithoutStartedByNestedInput
   SubmittedCorrectionCaptures: CorrectionCaptureUpdateManyWithoutSubmittedByNestedInput
   TriggeredTemplatePdfAssets: OmrTemplateVersionPdfAssetUpdateManyWithoutTriggeredByNestedInput
@@ -1745,6 +1853,8 @@ input AgentUpdateWithoutCreatedOmrTemplateVersionsInput {
   CreatedOmrTemplates: OmrTemplateUpdateManyWithoutCreatedByNestedInput
   Memberships: AclMembershipUpdateManyWithoutAgentNestedInput
   ResolvedCorrectionCaptures: CorrectionCaptureUpdateManyWithoutResolvedByNestedInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogUpdateManyWithoutActorNestedInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideUpdateManyWithoutReviewedByNestedInput
   StartedCorrectionSessions: CorrectionSessionUpdateManyWithoutStartedByNestedInput
   SubmittedCorrectionCaptures: CorrectionCaptureUpdateManyWithoutSubmittedByNestedInput
   TriggeredTemplatePdfAssets: OmrTemplateVersionPdfAssetUpdateManyWithoutTriggeredByNestedInput
@@ -1759,6 +1869,8 @@ input AgentUpdateWithoutCreatedOmrTemplatesInput {
   CreatedOmrTemplateVersions: OmrTemplateVersionUpdateManyWithoutCreatedByNestedInput
   Memberships: AclMembershipUpdateManyWithoutAgentNestedInput
   ResolvedCorrectionCaptures: CorrectionCaptureUpdateManyWithoutResolvedByNestedInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogUpdateManyWithoutActorNestedInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideUpdateManyWithoutReviewedByNestedInput
   StartedCorrectionSessions: CorrectionSessionUpdateManyWithoutStartedByNestedInput
   SubmittedCorrectionCaptures: CorrectionCaptureUpdateManyWithoutSubmittedByNestedInput
   TriggeredTemplatePdfAssets: OmrTemplateVersionPdfAssetUpdateManyWithoutTriggeredByNestedInput
@@ -1773,6 +1885,8 @@ input AgentUpdateWithoutMembershipsInput {
   CreatedOmrTemplateVersions: OmrTemplateVersionUpdateManyWithoutCreatedByNestedInput
   CreatedOmrTemplates: OmrTemplateUpdateManyWithoutCreatedByNestedInput
   ResolvedCorrectionCaptures: CorrectionCaptureUpdateManyWithoutResolvedByNestedInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogUpdateManyWithoutActorNestedInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideUpdateManyWithoutReviewedByNestedInput
   StartedCorrectionSessions: CorrectionSessionUpdateManyWithoutStartedByNestedInput
   SubmittedCorrectionCaptures: CorrectionCaptureUpdateManyWithoutSubmittedByNestedInput
   TriggeredTemplatePdfAssets: OmrTemplateVersionPdfAssetUpdateManyWithoutTriggeredByNestedInput
@@ -1787,6 +1901,40 @@ input AgentUpdateWithoutResolvedCorrectionCapturesInput {
   CreatedOmrTemplateVersions: OmrTemplateVersionUpdateManyWithoutCreatedByNestedInput
   CreatedOmrTemplates: OmrTemplateUpdateManyWithoutCreatedByNestedInput
   Memberships: AclMembershipUpdateManyWithoutAgentNestedInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogUpdateManyWithoutActorNestedInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideUpdateManyWithoutReviewedByNestedInput
+  StartedCorrectionSessions: CorrectionSessionUpdateManyWithoutStartedByNestedInput
+  SubmittedCorrectionCaptures: CorrectionCaptureUpdateManyWithoutSubmittedByNestedInput
+  TriggeredTemplatePdfAssets: OmrTemplateVersionPdfAssetUpdateManyWithoutTriggeredByNestedInput
+  User: UserUpdateOneRequiredWithoutAgentNestedInput
+  createdAt: DateTimeFieldUpdateOperationsInput
+  id: StringFieldUpdateOperationsInput
+  updatedAt: DateTimeFieldUpdateOperationsInput
+}
+
+input AgentUpdateWithoutReviewAuditLogsInput {
+  Corrections: CorrectionExamUpdateManyWithoutGradedByNestedInput
+  CreatedOmrTemplateVersions: OmrTemplateVersionUpdateManyWithoutCreatedByNestedInput
+  CreatedOmrTemplates: OmrTemplateUpdateManyWithoutCreatedByNestedInput
+  Memberships: AclMembershipUpdateManyWithoutAgentNestedInput
+  ResolvedCorrectionCaptures: CorrectionCaptureUpdateManyWithoutResolvedByNestedInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideUpdateManyWithoutReviewedByNestedInput
+  StartedCorrectionSessions: CorrectionSessionUpdateManyWithoutStartedByNestedInput
+  SubmittedCorrectionCaptures: CorrectionCaptureUpdateManyWithoutSubmittedByNestedInput
+  TriggeredTemplatePdfAssets: OmrTemplateVersionPdfAssetUpdateManyWithoutTriggeredByNestedInput
+  User: UserUpdateOneRequiredWithoutAgentNestedInput
+  createdAt: DateTimeFieldUpdateOperationsInput
+  id: StringFieldUpdateOperationsInput
+  updatedAt: DateTimeFieldUpdateOperationsInput
+}
+
+input AgentUpdateWithoutReviewOverridesInput {
+  Corrections: CorrectionExamUpdateManyWithoutGradedByNestedInput
+  CreatedOmrTemplateVersions: OmrTemplateVersionUpdateManyWithoutCreatedByNestedInput
+  CreatedOmrTemplates: OmrTemplateUpdateManyWithoutCreatedByNestedInput
+  Memberships: AclMembershipUpdateManyWithoutAgentNestedInput
+  ResolvedCorrectionCaptures: CorrectionCaptureUpdateManyWithoutResolvedByNestedInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogUpdateManyWithoutActorNestedInput
   StartedCorrectionSessions: CorrectionSessionUpdateManyWithoutStartedByNestedInput
   SubmittedCorrectionCaptures: CorrectionCaptureUpdateManyWithoutSubmittedByNestedInput
   TriggeredTemplatePdfAssets: OmrTemplateVersionPdfAssetUpdateManyWithoutTriggeredByNestedInput
@@ -1802,6 +1950,8 @@ input AgentUpdateWithoutStartedCorrectionSessionsInput {
   CreatedOmrTemplates: OmrTemplateUpdateManyWithoutCreatedByNestedInput
   Memberships: AclMembershipUpdateManyWithoutAgentNestedInput
   ResolvedCorrectionCaptures: CorrectionCaptureUpdateManyWithoutResolvedByNestedInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogUpdateManyWithoutActorNestedInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideUpdateManyWithoutReviewedByNestedInput
   SubmittedCorrectionCaptures: CorrectionCaptureUpdateManyWithoutSubmittedByNestedInput
   TriggeredTemplatePdfAssets: OmrTemplateVersionPdfAssetUpdateManyWithoutTriggeredByNestedInput
   User: UserUpdateOneRequiredWithoutAgentNestedInput
@@ -1816,6 +1966,8 @@ input AgentUpdateWithoutSubmittedCorrectionCapturesInput {
   CreatedOmrTemplates: OmrTemplateUpdateManyWithoutCreatedByNestedInput
   Memberships: AclMembershipUpdateManyWithoutAgentNestedInput
   ResolvedCorrectionCaptures: CorrectionCaptureUpdateManyWithoutResolvedByNestedInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogUpdateManyWithoutActorNestedInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideUpdateManyWithoutReviewedByNestedInput
   StartedCorrectionSessions: CorrectionSessionUpdateManyWithoutStartedByNestedInput
   TriggeredTemplatePdfAssets: OmrTemplateVersionPdfAssetUpdateManyWithoutTriggeredByNestedInput
   User: UserUpdateOneRequiredWithoutAgentNestedInput
@@ -1830,6 +1982,8 @@ input AgentUpdateWithoutTriggeredTemplatePdfAssetsInput {
   CreatedOmrTemplates: OmrTemplateUpdateManyWithoutCreatedByNestedInput
   Memberships: AclMembershipUpdateManyWithoutAgentNestedInput
   ResolvedCorrectionCaptures: CorrectionCaptureUpdateManyWithoutResolvedByNestedInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogUpdateManyWithoutActorNestedInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideUpdateManyWithoutReviewedByNestedInput
   StartedCorrectionSessions: CorrectionSessionUpdateManyWithoutStartedByNestedInput
   SubmittedCorrectionCaptures: CorrectionCaptureUpdateManyWithoutSubmittedByNestedInput
   User: UserUpdateOneRequiredWithoutAgentNestedInput
@@ -1844,6 +1998,8 @@ input AgentUpdateWithoutUserInput {
   CreatedOmrTemplates: OmrTemplateUpdateManyWithoutCreatedByNestedInput
   Memberships: AclMembershipUpdateManyWithoutAgentNestedInput
   ResolvedCorrectionCaptures: CorrectionCaptureUpdateManyWithoutResolvedByNestedInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogUpdateManyWithoutActorNestedInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideUpdateManyWithoutReviewedByNestedInput
   StartedCorrectionSessions: CorrectionSessionUpdateManyWithoutStartedByNestedInput
   SubmittedCorrectionCaptures: CorrectionCaptureUpdateManyWithoutSubmittedByNestedInput
   TriggeredTemplatePdfAssets: OmrTemplateVersionPdfAssetUpdateManyWithoutTriggeredByNestedInput
@@ -1882,6 +2038,18 @@ input AgentUpsertWithoutResolvedCorrectionCapturesInput {
   where: AgentWhereInput
 }
 
+input AgentUpsertWithoutReviewAuditLogsInput {
+  create: AgentCreateWithoutReviewAuditLogsInput!
+  update: AgentUpdateWithoutReviewAuditLogsInput!
+  where: AgentWhereInput
+}
+
+input AgentUpsertWithoutReviewOverridesInput {
+  create: AgentCreateWithoutReviewOverridesInput!
+  update: AgentUpdateWithoutReviewOverridesInput!
+  where: AgentWhereInput
+}
+
 input AgentUpsertWithoutStartedCorrectionSessionsInput {
   create: AgentCreateWithoutStartedCorrectionSessionsInput!
   update: AgentUpdateWithoutStartedCorrectionSessionsInput!
@@ -1915,6 +2083,8 @@ input AgentWhereInput {
   NOT: [AgentWhereInput!]
   OR: [AgentWhereInput!]
   ResolvedCorrectionCaptures: CorrectionCaptureListRelationFilter
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogListRelationFilter
+  ReviewOverrides: CorrectionCaptureReviewOverrideListRelationFilter
   StartedCorrectionSessions: CorrectionSessionListRelationFilter
   SubmittedCorrectionCaptures: CorrectionCaptureListRelationFilter
   TriggeredTemplatePdfAssets: OmrTemplateVersionPdfAssetListRelationFilter
@@ -1934,6 +2104,8 @@ input AgentWhereUniqueInput {
   NOT: [AgentWhereInput!]
   OR: [AgentWhereInput!]
   ResolvedCorrectionCaptures: CorrectionCaptureListRelationFilter
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogListRelationFilter
+  ReviewOverrides: CorrectionCaptureReviewOverrideListRelationFilter
   StartedCorrectionSessions: CorrectionSessionListRelationFilter
   SubmittedCorrectionCaptures: CorrectionCaptureListRelationFilter
   TriggeredTemplatePdfAssets: OmrTemplateVersionPdfAssetListRelationFilter
@@ -3557,6 +3729,8 @@ type CorrectionCapture {
   Events: [CorrectionSessionEvent!]
   Exam: Exam!
   ResolvedBy: Agent
+  ReviewAuditLogs: [CorrectionCaptureReviewAuditLog!]
+  ReviewOverrides: [CorrectionCaptureReviewOverride!]
   Session: CorrectionSession!
   Student: Student
   SubmittedBy: Agent
@@ -3571,7 +3745,7 @@ type CorrectionCapture {
   examId: String!
   id: ID!
   omrPayload: JSON
-  originalImagePath: String!
+  originalImagePath: String
   overlayImagePath: String
   processingMs: Int
   queueLatencyMs: Int
@@ -3591,6 +3765,8 @@ type CorrectionCapture {
 
 type CorrectionCaptureCount {
   Events: Int!
+  ReviewAuditLogs: Int!
+  ReviewOverrides: Int!
 }
 
 input CorrectionCaptureCreateManyExamInput {
@@ -3805,6 +3981,18 @@ input CorrectionCaptureCreateNestedOneWithoutEventsInput {
   create: CorrectionCaptureCreateWithoutEventsInput
 }
 
+input CorrectionCaptureCreateNestedOneWithoutReviewAuditLogsInput {
+  connect: CorrectionCaptureWhereUniqueInput
+  connectOrCreate: CorrectionCaptureCreateOrConnectWithoutReviewAuditLogsInput
+  create: CorrectionCaptureCreateWithoutReviewAuditLogsInput
+}
+
+input CorrectionCaptureCreateNestedOneWithoutReviewOverridesInput {
+  connect: CorrectionCaptureWhereUniqueInput
+  connectOrCreate: CorrectionCaptureCreateOrConnectWithoutReviewOverridesInput
+  create: CorrectionCaptureCreateWithoutReviewOverridesInput
+}
+
 input CorrectionCaptureCreateOrConnectWithoutCorrectionExamInput {
   create: CorrectionCaptureCreateWithoutCorrectionExamInput!
   where: CorrectionCaptureWhereUniqueInput!
@@ -3822,6 +4010,16 @@ input CorrectionCaptureCreateOrConnectWithoutExamInput {
 
 input CorrectionCaptureCreateOrConnectWithoutResolvedByInput {
   create: CorrectionCaptureCreateWithoutResolvedByInput!
+  where: CorrectionCaptureWhereUniqueInput!
+}
+
+input CorrectionCaptureCreateOrConnectWithoutReviewAuditLogsInput {
+  create: CorrectionCaptureCreateWithoutReviewAuditLogsInput!
+  where: CorrectionCaptureWhereUniqueInput!
+}
+
+input CorrectionCaptureCreateOrConnectWithoutReviewOverridesInput {
+  create: CorrectionCaptureCreateWithoutReviewOverridesInput!
   where: CorrectionCaptureWhereUniqueInput!
 }
 
@@ -3844,6 +4042,8 @@ input CorrectionCaptureCreateWithoutCorrectionExamInput {
   Events: CorrectionSessionEventCreateNestedManyWithoutCaptureInput
   Exam: ExamCreateNestedOneWithoutCapturesInput!
   ResolvedBy: AgentCreateNestedOneWithoutResolvedCorrectionCapturesInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogCreateNestedManyWithoutCaptureInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideCreateNestedManyWithoutCaptureInput
   Session: CorrectionSessionCreateNestedOneWithoutCapturesInput!
   Student: StudentCreateNestedOneWithoutCapturesInput
   SubmittedBy: AgentCreateNestedOneWithoutSubmittedCorrectionCapturesInput
@@ -3873,6 +4073,8 @@ input CorrectionCaptureCreateWithoutEventsInput {
   CorrectionExam: CorrectionExamCreateNestedOneWithoutCaptureInput
   Exam: ExamCreateNestedOneWithoutCapturesInput!
   ResolvedBy: AgentCreateNestedOneWithoutResolvedCorrectionCapturesInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogCreateNestedManyWithoutCaptureInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideCreateNestedManyWithoutCaptureInput
   Session: CorrectionSessionCreateNestedOneWithoutCapturesInput!
   Student: StudentCreateNestedOneWithoutCapturesInput
   SubmittedBy: AgentCreateNestedOneWithoutSubmittedCorrectionCapturesInput
@@ -3902,6 +4104,8 @@ input CorrectionCaptureCreateWithoutExamInput {
   CorrectionExam: CorrectionExamCreateNestedOneWithoutCaptureInput
   Events: CorrectionSessionEventCreateNestedManyWithoutCaptureInput
   ResolvedBy: AgentCreateNestedOneWithoutResolvedCorrectionCapturesInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogCreateNestedManyWithoutCaptureInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideCreateNestedManyWithoutCaptureInput
   Session: CorrectionSessionCreateNestedOneWithoutCapturesInput!
   Student: StudentCreateNestedOneWithoutCapturesInput
   SubmittedBy: AgentCreateNestedOneWithoutSubmittedCorrectionCapturesInput
@@ -3931,6 +4135,70 @@ input CorrectionCaptureCreateWithoutResolvedByInput {
   CorrectionExam: CorrectionExamCreateNestedOneWithoutCaptureInput
   Events: CorrectionSessionEventCreateNestedManyWithoutCaptureInput
   Exam: ExamCreateNestedOneWithoutCapturesInput!
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogCreateNestedManyWithoutCaptureInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideCreateNestedManyWithoutCaptureInput
+  Session: CorrectionSessionCreateNestedOneWithoutCapturesInput!
+  Student: StudentCreateNestedOneWithoutCapturesInput
+  SubmittedBy: AgentCreateNestedOneWithoutSubmittedCorrectionCapturesInput
+  artifactsPurgedAt: DateTime
+  createdAt: DateTime
+  delta: Float
+  detectionPayload: JSON
+  engineVersion: String
+  errorMessage: String
+  id: String
+  omrPayload: JSON
+  originalImagePath: String!
+  overlayImagePath: String
+  processingMs: Int
+  queueLatencyMs: Int
+  rectifiedImagePath: String
+  registrationNumber: String
+  resolvedAt: DateTime
+  reviewNotes: String
+  reviewReasons: CorrectionCaptureCreatereviewReasonsInput
+  status: CorrectionCaptureStatus
+  threshold: Float
+  updatedAt: DateTime
+}
+
+input CorrectionCaptureCreateWithoutReviewAuditLogsInput {
+  CorrectionExam: CorrectionExamCreateNestedOneWithoutCaptureInput
+  Events: CorrectionSessionEventCreateNestedManyWithoutCaptureInput
+  Exam: ExamCreateNestedOneWithoutCapturesInput!
+  ResolvedBy: AgentCreateNestedOneWithoutResolvedCorrectionCapturesInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideCreateNestedManyWithoutCaptureInput
+  Session: CorrectionSessionCreateNestedOneWithoutCapturesInput!
+  Student: StudentCreateNestedOneWithoutCapturesInput
+  SubmittedBy: AgentCreateNestedOneWithoutSubmittedCorrectionCapturesInput
+  artifactsPurgedAt: DateTime
+  createdAt: DateTime
+  delta: Float
+  detectionPayload: JSON
+  engineVersion: String
+  errorMessage: String
+  id: String
+  omrPayload: JSON
+  originalImagePath: String!
+  overlayImagePath: String
+  processingMs: Int
+  queueLatencyMs: Int
+  rectifiedImagePath: String
+  registrationNumber: String
+  resolvedAt: DateTime
+  reviewNotes: String
+  reviewReasons: CorrectionCaptureCreatereviewReasonsInput
+  status: CorrectionCaptureStatus
+  threshold: Float
+  updatedAt: DateTime
+}
+
+input CorrectionCaptureCreateWithoutReviewOverridesInput {
+  CorrectionExam: CorrectionExamCreateNestedOneWithoutCaptureInput
+  Events: CorrectionSessionEventCreateNestedManyWithoutCaptureInput
+  Exam: ExamCreateNestedOneWithoutCapturesInput!
+  ResolvedBy: AgentCreateNestedOneWithoutResolvedCorrectionCapturesInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogCreateNestedManyWithoutCaptureInput
   Session: CorrectionSessionCreateNestedOneWithoutCapturesInput!
   Student: StudentCreateNestedOneWithoutCapturesInput
   SubmittedBy: AgentCreateNestedOneWithoutSubmittedCorrectionCapturesInput
@@ -3961,6 +4229,8 @@ input CorrectionCaptureCreateWithoutSessionInput {
   Events: CorrectionSessionEventCreateNestedManyWithoutCaptureInput
   Exam: ExamCreateNestedOneWithoutCapturesInput!
   ResolvedBy: AgentCreateNestedOneWithoutResolvedCorrectionCapturesInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogCreateNestedManyWithoutCaptureInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideCreateNestedManyWithoutCaptureInput
   Student: StudentCreateNestedOneWithoutCapturesInput
   SubmittedBy: AgentCreateNestedOneWithoutSubmittedCorrectionCapturesInput
   artifactsPurgedAt: DateTime
@@ -3990,6 +4260,8 @@ input CorrectionCaptureCreateWithoutStudentInput {
   Events: CorrectionSessionEventCreateNestedManyWithoutCaptureInput
   Exam: ExamCreateNestedOneWithoutCapturesInput!
   ResolvedBy: AgentCreateNestedOneWithoutResolvedCorrectionCapturesInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogCreateNestedManyWithoutCaptureInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideCreateNestedManyWithoutCaptureInput
   Session: CorrectionSessionCreateNestedOneWithoutCapturesInput!
   SubmittedBy: AgentCreateNestedOneWithoutSubmittedCorrectionCapturesInput
   artifactsPurgedAt: DateTime
@@ -4019,6 +4291,8 @@ input CorrectionCaptureCreateWithoutSubmittedByInput {
   Events: CorrectionSessionEventCreateNestedManyWithoutCaptureInput
   Exam: ExamCreateNestedOneWithoutCapturesInput!
   ResolvedBy: AgentCreateNestedOneWithoutResolvedCorrectionCapturesInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogCreateNestedManyWithoutCaptureInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideCreateNestedManyWithoutCaptureInput
   Session: CorrectionSessionCreateNestedOneWithoutCapturesInput!
   Student: StudentCreateNestedOneWithoutCapturesInput
   artifactsPurgedAt: DateTime
@@ -4063,12 +4337,659 @@ input CorrectionCaptureNullableScalarRelationFilter {
   isNot: CorrectionCaptureWhereInput
 }
 
+enum CorrectionCaptureQuestionGradingOverride {
+  annulled
+  auto
+  correct
+  incorrect
+}
+
+type CorrectionCaptureReviewAuditLog {
+  Actor: Agent
+  Capture: CorrectionCapture!
+  action: String!
+  actorAgentId: String
+  captureId: String!
+  createdAt: DateTime!
+  id: ID!
+  payload: JSON
+}
+
+input CorrectionCaptureReviewAuditLogCreateManyActorInput {
+  action: String!
+  captureId: String!
+  createdAt: DateTime
+  id: String
+  payload: JSON
+}
+
+input CorrectionCaptureReviewAuditLogCreateManyActorInputEnvelope {
+  data: [CorrectionCaptureReviewAuditLogCreateManyActorInput!]!
+  skipDuplicates: Boolean
+}
+
+input CorrectionCaptureReviewAuditLogCreateManyCaptureInput {
+  action: String!
+  actorAgentId: String
+  createdAt: DateTime
+  id: String
+  payload: JSON
+}
+
+input CorrectionCaptureReviewAuditLogCreateManyCaptureInputEnvelope {
+  data: [CorrectionCaptureReviewAuditLogCreateManyCaptureInput!]!
+  skipDuplicates: Boolean
+}
+
+input CorrectionCaptureReviewAuditLogCreateNestedManyWithoutActorInput {
+  connect: [CorrectionCaptureReviewAuditLogWhereUniqueInput!]
+  connectOrCreate: [CorrectionCaptureReviewAuditLogCreateOrConnectWithoutActorInput!]
+  create: [CorrectionCaptureReviewAuditLogCreateWithoutActorInput!]
+  createMany: CorrectionCaptureReviewAuditLogCreateManyActorInputEnvelope
+}
+
+input CorrectionCaptureReviewAuditLogCreateNestedManyWithoutCaptureInput {
+  connect: [CorrectionCaptureReviewAuditLogWhereUniqueInput!]
+  connectOrCreate: [CorrectionCaptureReviewAuditLogCreateOrConnectWithoutCaptureInput!]
+  create: [CorrectionCaptureReviewAuditLogCreateWithoutCaptureInput!]
+  createMany: CorrectionCaptureReviewAuditLogCreateManyCaptureInputEnvelope
+}
+
+input CorrectionCaptureReviewAuditLogCreateOrConnectWithoutActorInput {
+  create: CorrectionCaptureReviewAuditLogCreateWithoutActorInput!
+  where: CorrectionCaptureReviewAuditLogWhereUniqueInput!
+}
+
+input CorrectionCaptureReviewAuditLogCreateOrConnectWithoutCaptureInput {
+  create: CorrectionCaptureReviewAuditLogCreateWithoutCaptureInput!
+  where: CorrectionCaptureReviewAuditLogWhereUniqueInput!
+}
+
+input CorrectionCaptureReviewAuditLogCreateWithoutActorInput {
+  Capture: CorrectionCaptureCreateNestedOneWithoutReviewAuditLogsInput!
+  action: String!
+  createdAt: DateTime
+  id: String
+  payload: JSON
+}
+
+input CorrectionCaptureReviewAuditLogCreateWithoutCaptureInput {
+  Actor: AgentCreateNestedOneWithoutReviewAuditLogsInput
+  action: String!
+  createdAt: DateTime
+  id: String
+  payload: JSON
+}
+
+input CorrectionCaptureReviewAuditLogListRelationFilter {
+  every: CorrectionCaptureReviewAuditLogWhereInput
+  none: CorrectionCaptureReviewAuditLogWhereInput
+  some: CorrectionCaptureReviewAuditLogWhereInput
+}
+
+type CorrectionCaptureReviewAuditLogObject {
+  action: String!
+  actorId: String
+  actorName: String
+  createdAt: DateTime!
+  id: String!
+}
+
+input CorrectionCaptureReviewAuditLogScalarWhereInput {
+  AND: [CorrectionCaptureReviewAuditLogScalarWhereInput!]
+  NOT: [CorrectionCaptureReviewAuditLogScalarWhereInput!]
+  OR: [CorrectionCaptureReviewAuditLogScalarWhereInput!]
+  action: StringFilter
+  actorAgentId: StringNullableFilter
+  captureId: StringFilter
+  createdAt: DateTimeFilter
+  id: StringFilter
+  payload: JsonNullableFilter
+}
+
+input CorrectionCaptureReviewAuditLogUpdateManyMutationInput {
+  action: StringFieldUpdateOperationsInput
+  createdAt: DateTimeFieldUpdateOperationsInput
+  id: StringFieldUpdateOperationsInput
+  payload: JSON
+}
+
+input CorrectionCaptureReviewAuditLogUpdateManyWithWhereWithoutActorInput {
+  data: CorrectionCaptureReviewAuditLogUpdateManyMutationInput!
+  where: CorrectionCaptureReviewAuditLogScalarWhereInput!
+}
+
+input CorrectionCaptureReviewAuditLogUpdateManyWithWhereWithoutCaptureInput {
+  data: CorrectionCaptureReviewAuditLogUpdateManyMutationInput!
+  where: CorrectionCaptureReviewAuditLogScalarWhereInput!
+}
+
+input CorrectionCaptureReviewAuditLogUpdateManyWithoutActorNestedInput {
+  connect: [CorrectionCaptureReviewAuditLogWhereUniqueInput!]
+  connectOrCreate: [CorrectionCaptureReviewAuditLogCreateOrConnectWithoutActorInput!]
+  create: [CorrectionCaptureReviewAuditLogCreateWithoutActorInput!]
+  createMany: CorrectionCaptureReviewAuditLogCreateManyActorInputEnvelope
+  delete: [CorrectionCaptureReviewAuditLogWhereUniqueInput!]
+  deleteMany: [CorrectionCaptureReviewAuditLogScalarWhereInput!]
+  disconnect: [CorrectionCaptureReviewAuditLogWhereUniqueInput!]
+  set: [CorrectionCaptureReviewAuditLogWhereUniqueInput!]
+  update: [CorrectionCaptureReviewAuditLogUpdateWithWhereUniqueWithoutActorInput!]
+  updateMany: [CorrectionCaptureReviewAuditLogUpdateManyWithWhereWithoutActorInput!]
+  upsert: [CorrectionCaptureReviewAuditLogUpsertWithWhereUniqueWithoutActorInput!]
+}
+
+input CorrectionCaptureReviewAuditLogUpdateManyWithoutCaptureNestedInput {
+  connect: [CorrectionCaptureReviewAuditLogWhereUniqueInput!]
+  connectOrCreate: [CorrectionCaptureReviewAuditLogCreateOrConnectWithoutCaptureInput!]
+  create: [CorrectionCaptureReviewAuditLogCreateWithoutCaptureInput!]
+  createMany: CorrectionCaptureReviewAuditLogCreateManyCaptureInputEnvelope
+  delete: [CorrectionCaptureReviewAuditLogWhereUniqueInput!]
+  deleteMany: [CorrectionCaptureReviewAuditLogScalarWhereInput!]
+  disconnect: [CorrectionCaptureReviewAuditLogWhereUniqueInput!]
+  set: [CorrectionCaptureReviewAuditLogWhereUniqueInput!]
+  update: [CorrectionCaptureReviewAuditLogUpdateWithWhereUniqueWithoutCaptureInput!]
+  updateMany: [CorrectionCaptureReviewAuditLogUpdateManyWithWhereWithoutCaptureInput!]
+  upsert: [CorrectionCaptureReviewAuditLogUpsertWithWhereUniqueWithoutCaptureInput!]
+}
+
+input CorrectionCaptureReviewAuditLogUpdateWithWhereUniqueWithoutActorInput {
+  data: CorrectionCaptureReviewAuditLogUpdateWithoutActorInput!
+  where: CorrectionCaptureReviewAuditLogWhereUniqueInput!
+}
+
+input CorrectionCaptureReviewAuditLogUpdateWithWhereUniqueWithoutCaptureInput {
+  data: CorrectionCaptureReviewAuditLogUpdateWithoutCaptureInput!
+  where: CorrectionCaptureReviewAuditLogWhereUniqueInput!
+}
+
+input CorrectionCaptureReviewAuditLogUpdateWithoutActorInput {
+  Capture: CorrectionCaptureUpdateOneRequiredWithoutReviewAuditLogsNestedInput
+  action: StringFieldUpdateOperationsInput
+  createdAt: DateTimeFieldUpdateOperationsInput
+  id: StringFieldUpdateOperationsInput
+  payload: JSON
+}
+
+input CorrectionCaptureReviewAuditLogUpdateWithoutCaptureInput {
+  Actor: AgentUpdateOneWithoutReviewAuditLogsNestedInput
+  action: StringFieldUpdateOperationsInput
+  createdAt: DateTimeFieldUpdateOperationsInput
+  id: StringFieldUpdateOperationsInput
+  payload: JSON
+}
+
+input CorrectionCaptureReviewAuditLogUpsertWithWhereUniqueWithoutActorInput {
+  create: CorrectionCaptureReviewAuditLogCreateWithoutActorInput!
+  update: CorrectionCaptureReviewAuditLogUpdateWithoutActorInput!
+  where: CorrectionCaptureReviewAuditLogWhereUniqueInput!
+}
+
+input CorrectionCaptureReviewAuditLogUpsertWithWhereUniqueWithoutCaptureInput {
+  create: CorrectionCaptureReviewAuditLogCreateWithoutCaptureInput!
+  update: CorrectionCaptureReviewAuditLogUpdateWithoutCaptureInput!
+  where: CorrectionCaptureReviewAuditLogWhereUniqueInput!
+}
+
+input CorrectionCaptureReviewAuditLogWhereInput {
+  AND: [CorrectionCaptureReviewAuditLogWhereInput!]
+  Actor: AgentNullableScalarRelationFilter
+  Capture: CorrectionCaptureScalarRelationFilter
+  NOT: [CorrectionCaptureReviewAuditLogWhereInput!]
+  OR: [CorrectionCaptureReviewAuditLogWhereInput!]
+  action: StringFilter
+  actorAgentId: StringNullableFilter
+  captureId: StringFilter
+  createdAt: DateTimeFilter
+  id: StringFilter
+  payload: JsonNullableFilter
+}
+
+input CorrectionCaptureReviewAuditLogWhereUniqueInput {
+  AND: [CorrectionCaptureReviewAuditLogWhereInput!]
+  Actor: AgentNullableScalarRelationFilter
+  Capture: CorrectionCaptureScalarRelationFilter
+  NOT: [CorrectionCaptureReviewAuditLogWhereInput!]
+  OR: [CorrectionCaptureReviewAuditLogWhereInput!]
+  action: StringFilter
+  actorAgentId: StringNullableFilter
+  captureId: StringFilter
+  createdAt: DateTimeFilter
+  id: String
+  payload: JsonNullableFilter
+}
+
+type CorrectionCaptureReviewObject {
+  attempt: Int
+  auditLogs: [CorrectionCaptureReviewAuditLogObject!]!
+  captureId: String!
+  correctionExamId: String
+  createdAt: DateTime!
+  errorMessage: String
+  examId: String!
+  examTitle: String!
+  klassId: String!
+  previewImageUrl: String
+  questionCount: Int!
+  questions: [CorrectionCaptureReviewQuestionObject!]!
+  registrationNumber: String
+  reviewNotes: String
+  reviewReasons: [CorrectionCaptureReviewReason!]!
+  score: Float
+  sessionId: String!
+  status: CorrectionCaptureStatus!
+  student: CorrectionCaptureReviewStudentObject
+  updatedAt: DateTime!
+}
+
+enum CorrectionCaptureReviewOutcome {
+  graded
+  invalidated
+  needs_review
+}
+
+type CorrectionCaptureReviewOverride {
+  Capture: CorrectionCapture!
+  Question: Question!
+  ReviewedBy: Agent
+  captureId: String!
+  createdAt: DateTime!
+  gradingOverride: CorrectionCaptureQuestionGradingOverride!
+  id: ID!
+  note: String
+  questionId: String!
+  reason: String
+  reviewedAt: DateTime
+  reviewedByAgentId: String
+  selectedAlternatives: [Int!]
+  updatedAt: DateTime!
+}
+
+input CorrectionCaptureReviewOverrideCaptureIdQuestionIdCompoundUniqueInput {
+  captureId: String!
+  questionId: String!
+}
+
+input CorrectionCaptureReviewOverrideCreateManyCaptureInput {
+  createdAt: DateTime
+  gradingOverride: CorrectionCaptureQuestionGradingOverride
+  id: String
+  note: String
+  questionId: String!
+  reason: String
+  reviewedAt: DateTime
+  reviewedByAgentId: String
+  selectedAlternatives: CorrectionCaptureReviewOverrideCreateselectedAlternativesInput
+  updatedAt: DateTime
+}
+
+input CorrectionCaptureReviewOverrideCreateManyCaptureInputEnvelope {
+  data: [CorrectionCaptureReviewOverrideCreateManyCaptureInput!]!
+  skipDuplicates: Boolean
+}
+
+input CorrectionCaptureReviewOverrideCreateManyQuestionInput {
+  captureId: String!
+  createdAt: DateTime
+  gradingOverride: CorrectionCaptureQuestionGradingOverride
+  id: String
+  note: String
+  reason: String
+  reviewedAt: DateTime
+  reviewedByAgentId: String
+  selectedAlternatives: CorrectionCaptureReviewOverrideCreateselectedAlternativesInput
+  updatedAt: DateTime
+}
+
+input CorrectionCaptureReviewOverrideCreateManyQuestionInputEnvelope {
+  data: [CorrectionCaptureReviewOverrideCreateManyQuestionInput!]!
+  skipDuplicates: Boolean
+}
+
+input CorrectionCaptureReviewOverrideCreateManyReviewedByInput {
+  captureId: String!
+  createdAt: DateTime
+  gradingOverride: CorrectionCaptureQuestionGradingOverride
+  id: String
+  note: String
+  questionId: String!
+  reason: String
+  reviewedAt: DateTime
+  selectedAlternatives: CorrectionCaptureReviewOverrideCreateselectedAlternativesInput
+  updatedAt: DateTime
+}
+
+input CorrectionCaptureReviewOverrideCreateManyReviewedByInputEnvelope {
+  data: [CorrectionCaptureReviewOverrideCreateManyReviewedByInput!]!
+  skipDuplicates: Boolean
+}
+
+input CorrectionCaptureReviewOverrideCreateNestedManyWithoutCaptureInput {
+  connect: [CorrectionCaptureReviewOverrideWhereUniqueInput!]
+  connectOrCreate: [CorrectionCaptureReviewOverrideCreateOrConnectWithoutCaptureInput!]
+  create: [CorrectionCaptureReviewOverrideCreateWithoutCaptureInput!]
+  createMany: CorrectionCaptureReviewOverrideCreateManyCaptureInputEnvelope
+}
+
+input CorrectionCaptureReviewOverrideCreateNestedManyWithoutQuestionInput {
+  connect: [CorrectionCaptureReviewOverrideWhereUniqueInput!]
+  connectOrCreate: [CorrectionCaptureReviewOverrideCreateOrConnectWithoutQuestionInput!]
+  create: [CorrectionCaptureReviewOverrideCreateWithoutQuestionInput!]
+  createMany: CorrectionCaptureReviewOverrideCreateManyQuestionInputEnvelope
+}
+
+input CorrectionCaptureReviewOverrideCreateNestedManyWithoutReviewedByInput {
+  connect: [CorrectionCaptureReviewOverrideWhereUniqueInput!]
+  connectOrCreate: [CorrectionCaptureReviewOverrideCreateOrConnectWithoutReviewedByInput!]
+  create: [CorrectionCaptureReviewOverrideCreateWithoutReviewedByInput!]
+  createMany: CorrectionCaptureReviewOverrideCreateManyReviewedByInputEnvelope
+}
+
+input CorrectionCaptureReviewOverrideCreateOrConnectWithoutCaptureInput {
+  create: CorrectionCaptureReviewOverrideCreateWithoutCaptureInput!
+  where: CorrectionCaptureReviewOverrideWhereUniqueInput!
+}
+
+input CorrectionCaptureReviewOverrideCreateOrConnectWithoutQuestionInput {
+  create: CorrectionCaptureReviewOverrideCreateWithoutQuestionInput!
+  where: CorrectionCaptureReviewOverrideWhereUniqueInput!
+}
+
+input CorrectionCaptureReviewOverrideCreateOrConnectWithoutReviewedByInput {
+  create: CorrectionCaptureReviewOverrideCreateWithoutReviewedByInput!
+  where: CorrectionCaptureReviewOverrideWhereUniqueInput!
+}
+
+input CorrectionCaptureReviewOverrideCreateWithoutCaptureInput {
+  Question: QuestionCreateNestedOneWithoutReviewOverridesInput!
+  ReviewedBy: AgentCreateNestedOneWithoutReviewOverridesInput
+  createdAt: DateTime
+  gradingOverride: CorrectionCaptureQuestionGradingOverride
+  id: String
+  note: String
+  reason: String
+  reviewedAt: DateTime
+  selectedAlternatives: CorrectionCaptureReviewOverrideCreateselectedAlternativesInput
+  updatedAt: DateTime
+}
+
+input CorrectionCaptureReviewOverrideCreateWithoutQuestionInput {
+  Capture: CorrectionCaptureCreateNestedOneWithoutReviewOverridesInput!
+  ReviewedBy: AgentCreateNestedOneWithoutReviewOverridesInput
+  createdAt: DateTime
+  gradingOverride: CorrectionCaptureQuestionGradingOverride
+  id: String
+  note: String
+  reason: String
+  reviewedAt: DateTime
+  selectedAlternatives: CorrectionCaptureReviewOverrideCreateselectedAlternativesInput
+  updatedAt: DateTime
+}
+
+input CorrectionCaptureReviewOverrideCreateWithoutReviewedByInput {
+  Capture: CorrectionCaptureCreateNestedOneWithoutReviewOverridesInput!
+  Question: QuestionCreateNestedOneWithoutReviewOverridesInput!
+  createdAt: DateTime
+  gradingOverride: CorrectionCaptureQuestionGradingOverride
+  id: String
+  note: String
+  reason: String
+  reviewedAt: DateTime
+  selectedAlternatives: CorrectionCaptureReviewOverrideCreateselectedAlternativesInput
+  updatedAt: DateTime
+}
+
+input CorrectionCaptureReviewOverrideCreateselectedAlternativesInput {
+  set: [Int!]!
+}
+
+input CorrectionCaptureReviewOverrideListRelationFilter {
+  every: CorrectionCaptureReviewOverrideWhereInput
+  none: CorrectionCaptureReviewOverrideWhereInput
+  some: CorrectionCaptureReviewOverrideWhereInput
+}
+
+input CorrectionCaptureReviewOverrideScalarWhereInput {
+  AND: [CorrectionCaptureReviewOverrideScalarWhereInput!]
+  NOT: [CorrectionCaptureReviewOverrideScalarWhereInput!]
+  OR: [CorrectionCaptureReviewOverrideScalarWhereInput!]
+  captureId: StringFilter
+  createdAt: DateTimeFilter
+  gradingOverride: EnumCorrectionCaptureQuestionGradingOverrideFilter
+  id: StringFilter
+  note: StringNullableFilter
+  questionId: StringFilter
+  reason: StringNullableFilter
+  reviewedAt: DateTimeNullableFilter
+  reviewedByAgentId: StringNullableFilter
+  selectedAlternatives: IntNullableListFilter
+  updatedAt: DateTimeFilter
+}
+
+input CorrectionCaptureReviewOverrideUpdateManyMutationInput {
+  createdAt: DateTimeFieldUpdateOperationsInput
+  gradingOverride: EnumCorrectionCaptureQuestionGradingOverrideFieldUpdateOperationsInput
+  id: StringFieldUpdateOperationsInput
+  note: NullableStringFieldUpdateOperationsInput
+  reason: NullableStringFieldUpdateOperationsInput
+  reviewedAt: NullableDateTimeFieldUpdateOperationsInput
+  selectedAlternatives: CorrectionCaptureReviewOverrideUpdateselectedAlternativesInput
+  updatedAt: DateTimeFieldUpdateOperationsInput
+}
+
+input CorrectionCaptureReviewOverrideUpdateManyWithWhereWithoutCaptureInput {
+  data: CorrectionCaptureReviewOverrideUpdateManyMutationInput!
+  where: CorrectionCaptureReviewOverrideScalarWhereInput!
+}
+
+input CorrectionCaptureReviewOverrideUpdateManyWithWhereWithoutQuestionInput {
+  data: CorrectionCaptureReviewOverrideUpdateManyMutationInput!
+  where: CorrectionCaptureReviewOverrideScalarWhereInput!
+}
+
+input CorrectionCaptureReviewOverrideUpdateManyWithWhereWithoutReviewedByInput {
+  data: CorrectionCaptureReviewOverrideUpdateManyMutationInput!
+  where: CorrectionCaptureReviewOverrideScalarWhereInput!
+}
+
+input CorrectionCaptureReviewOverrideUpdateManyWithoutCaptureNestedInput {
+  connect: [CorrectionCaptureReviewOverrideWhereUniqueInput!]
+  connectOrCreate: [CorrectionCaptureReviewOverrideCreateOrConnectWithoutCaptureInput!]
+  create: [CorrectionCaptureReviewOverrideCreateWithoutCaptureInput!]
+  createMany: CorrectionCaptureReviewOverrideCreateManyCaptureInputEnvelope
+  delete: [CorrectionCaptureReviewOverrideWhereUniqueInput!]
+  deleteMany: [CorrectionCaptureReviewOverrideScalarWhereInput!]
+  disconnect: [CorrectionCaptureReviewOverrideWhereUniqueInput!]
+  set: [CorrectionCaptureReviewOverrideWhereUniqueInput!]
+  update: [CorrectionCaptureReviewOverrideUpdateWithWhereUniqueWithoutCaptureInput!]
+  updateMany: [CorrectionCaptureReviewOverrideUpdateManyWithWhereWithoutCaptureInput!]
+  upsert: [CorrectionCaptureReviewOverrideUpsertWithWhereUniqueWithoutCaptureInput!]
+}
+
+input CorrectionCaptureReviewOverrideUpdateManyWithoutQuestionNestedInput {
+  connect: [CorrectionCaptureReviewOverrideWhereUniqueInput!]
+  connectOrCreate: [CorrectionCaptureReviewOverrideCreateOrConnectWithoutQuestionInput!]
+  create: [CorrectionCaptureReviewOverrideCreateWithoutQuestionInput!]
+  createMany: CorrectionCaptureReviewOverrideCreateManyQuestionInputEnvelope
+  delete: [CorrectionCaptureReviewOverrideWhereUniqueInput!]
+  deleteMany: [CorrectionCaptureReviewOverrideScalarWhereInput!]
+  disconnect: [CorrectionCaptureReviewOverrideWhereUniqueInput!]
+  set: [CorrectionCaptureReviewOverrideWhereUniqueInput!]
+  update: [CorrectionCaptureReviewOverrideUpdateWithWhereUniqueWithoutQuestionInput!]
+  updateMany: [CorrectionCaptureReviewOverrideUpdateManyWithWhereWithoutQuestionInput!]
+  upsert: [CorrectionCaptureReviewOverrideUpsertWithWhereUniqueWithoutQuestionInput!]
+}
+
+input CorrectionCaptureReviewOverrideUpdateManyWithoutReviewedByNestedInput {
+  connect: [CorrectionCaptureReviewOverrideWhereUniqueInput!]
+  connectOrCreate: [CorrectionCaptureReviewOverrideCreateOrConnectWithoutReviewedByInput!]
+  create: [CorrectionCaptureReviewOverrideCreateWithoutReviewedByInput!]
+  createMany: CorrectionCaptureReviewOverrideCreateManyReviewedByInputEnvelope
+  delete: [CorrectionCaptureReviewOverrideWhereUniqueInput!]
+  deleteMany: [CorrectionCaptureReviewOverrideScalarWhereInput!]
+  disconnect: [CorrectionCaptureReviewOverrideWhereUniqueInput!]
+  set: [CorrectionCaptureReviewOverrideWhereUniqueInput!]
+  update: [CorrectionCaptureReviewOverrideUpdateWithWhereUniqueWithoutReviewedByInput!]
+  updateMany: [CorrectionCaptureReviewOverrideUpdateManyWithWhereWithoutReviewedByInput!]
+  upsert: [CorrectionCaptureReviewOverrideUpsertWithWhereUniqueWithoutReviewedByInput!]
+}
+
+input CorrectionCaptureReviewOverrideUpdateWithWhereUniqueWithoutCaptureInput {
+  data: CorrectionCaptureReviewOverrideUpdateWithoutCaptureInput!
+  where: CorrectionCaptureReviewOverrideWhereUniqueInput!
+}
+
+input CorrectionCaptureReviewOverrideUpdateWithWhereUniqueWithoutQuestionInput {
+  data: CorrectionCaptureReviewOverrideUpdateWithoutQuestionInput!
+  where: CorrectionCaptureReviewOverrideWhereUniqueInput!
+}
+
+input CorrectionCaptureReviewOverrideUpdateWithWhereUniqueWithoutReviewedByInput {
+  data: CorrectionCaptureReviewOverrideUpdateWithoutReviewedByInput!
+  where: CorrectionCaptureReviewOverrideWhereUniqueInput!
+}
+
+input CorrectionCaptureReviewOverrideUpdateWithoutCaptureInput {
+  Question: QuestionUpdateOneRequiredWithoutReviewOverridesNestedInput
+  ReviewedBy: AgentUpdateOneWithoutReviewOverridesNestedInput
+  createdAt: DateTimeFieldUpdateOperationsInput
+  gradingOverride: EnumCorrectionCaptureQuestionGradingOverrideFieldUpdateOperationsInput
+  id: StringFieldUpdateOperationsInput
+  note: NullableStringFieldUpdateOperationsInput
+  reason: NullableStringFieldUpdateOperationsInput
+  reviewedAt: NullableDateTimeFieldUpdateOperationsInput
+  selectedAlternatives: CorrectionCaptureReviewOverrideUpdateselectedAlternativesInput
+  updatedAt: DateTimeFieldUpdateOperationsInput
+}
+
+input CorrectionCaptureReviewOverrideUpdateWithoutQuestionInput {
+  Capture: CorrectionCaptureUpdateOneRequiredWithoutReviewOverridesNestedInput
+  ReviewedBy: AgentUpdateOneWithoutReviewOverridesNestedInput
+  createdAt: DateTimeFieldUpdateOperationsInput
+  gradingOverride: EnumCorrectionCaptureQuestionGradingOverrideFieldUpdateOperationsInput
+  id: StringFieldUpdateOperationsInput
+  note: NullableStringFieldUpdateOperationsInput
+  reason: NullableStringFieldUpdateOperationsInput
+  reviewedAt: NullableDateTimeFieldUpdateOperationsInput
+  selectedAlternatives: CorrectionCaptureReviewOverrideUpdateselectedAlternativesInput
+  updatedAt: DateTimeFieldUpdateOperationsInput
+}
+
+input CorrectionCaptureReviewOverrideUpdateWithoutReviewedByInput {
+  Capture: CorrectionCaptureUpdateOneRequiredWithoutReviewOverridesNestedInput
+  Question: QuestionUpdateOneRequiredWithoutReviewOverridesNestedInput
+  createdAt: DateTimeFieldUpdateOperationsInput
+  gradingOverride: EnumCorrectionCaptureQuestionGradingOverrideFieldUpdateOperationsInput
+  id: StringFieldUpdateOperationsInput
+  note: NullableStringFieldUpdateOperationsInput
+  reason: NullableStringFieldUpdateOperationsInput
+  reviewedAt: NullableDateTimeFieldUpdateOperationsInput
+  selectedAlternatives: CorrectionCaptureReviewOverrideUpdateselectedAlternativesInput
+  updatedAt: DateTimeFieldUpdateOperationsInput
+}
+
+input CorrectionCaptureReviewOverrideUpdateselectedAlternativesInput {
+  push: [Int!]
+  set: [Int!]
+}
+
+input CorrectionCaptureReviewOverrideUpsertWithWhereUniqueWithoutCaptureInput {
+  create: CorrectionCaptureReviewOverrideCreateWithoutCaptureInput!
+  update: CorrectionCaptureReviewOverrideUpdateWithoutCaptureInput!
+  where: CorrectionCaptureReviewOverrideWhereUniqueInput!
+}
+
+input CorrectionCaptureReviewOverrideUpsertWithWhereUniqueWithoutQuestionInput {
+  create: CorrectionCaptureReviewOverrideCreateWithoutQuestionInput!
+  update: CorrectionCaptureReviewOverrideUpdateWithoutQuestionInput!
+  where: CorrectionCaptureReviewOverrideWhereUniqueInput!
+}
+
+input CorrectionCaptureReviewOverrideUpsertWithWhereUniqueWithoutReviewedByInput {
+  create: CorrectionCaptureReviewOverrideCreateWithoutReviewedByInput!
+  update: CorrectionCaptureReviewOverrideUpdateWithoutReviewedByInput!
+  where: CorrectionCaptureReviewOverrideWhereUniqueInput!
+}
+
+input CorrectionCaptureReviewOverrideWhereInput {
+  AND: [CorrectionCaptureReviewOverrideWhereInput!]
+  Capture: CorrectionCaptureScalarRelationFilter
+  NOT: [CorrectionCaptureReviewOverrideWhereInput!]
+  OR: [CorrectionCaptureReviewOverrideWhereInput!]
+  Question: QuestionScalarRelationFilter
+  ReviewedBy: AgentNullableScalarRelationFilter
+  captureId: StringFilter
+  createdAt: DateTimeFilter
+  gradingOverride: EnumCorrectionCaptureQuestionGradingOverrideFilter
+  id: StringFilter
+  note: StringNullableFilter
+  questionId: StringFilter
+  reason: StringNullableFilter
+  reviewedAt: DateTimeNullableFilter
+  reviewedByAgentId: StringNullableFilter
+  selectedAlternatives: IntNullableListFilter
+  updatedAt: DateTimeFilter
+}
+
+input CorrectionCaptureReviewOverrideWhereUniqueInput {
+  AND: [CorrectionCaptureReviewOverrideWhereInput!]
+  Capture: CorrectionCaptureScalarRelationFilter
+  NOT: [CorrectionCaptureReviewOverrideWhereInput!]
+  OR: [CorrectionCaptureReviewOverrideWhereInput!]
+  Question: QuestionScalarRelationFilter
+  ReviewedBy: AgentNullableScalarRelationFilter
+  captureId: StringFilter
+  captureId_questionId: CorrectionCaptureReviewOverrideCaptureIdQuestionIdCompoundUniqueInput
+  createdAt: DateTimeFilter
+  gradingOverride: EnumCorrectionCaptureQuestionGradingOverrideFilter
+  id: String
+  note: StringNullableFilter
+  questionId: StringFilter
+  reason: StringNullableFilter
+  reviewedAt: DateTimeNullableFilter
+  reviewedByAgentId: StringNullableFilter
+  selectedAlternatives: IntNullableListFilter
+  updatedAt: DateTimeFilter
+}
+
+input CorrectionCaptureReviewQuestionInput {
+  gradingOverride: CorrectionCaptureQuestionGradingOverride
+  note: String
+  questionId: String!
+  reason: String
+  selectedAlternatives: [Int!]
+}
+
+type CorrectionCaptureReviewQuestionObject {
+  correctAlternative: Int!
+  currentSelectedAlternatives: [Int!]!
+  gradingOverride: CorrectionCaptureQuestionGradingOverride!
+  isCurrentCorrect: Boolean
+  note: String
+  number: Int!
+  omrSelectedAlternatives: [Int!]!
+  questionId: String!
+  reason: String
+  value: Float!
+}
+
 enum CorrectionCaptureReviewReason {
   answer_ambiguous
   manual_review
   omr_error
   registration_ambiguous
   registration_invalid
+}
+
+type CorrectionCaptureReviewStudentObject {
+  email: String
+  id: String!
+  name: String
+  registrationNumber: String
+}
+
+input CorrectionCaptureScalarRelationFilter {
+  is: CorrectionCaptureWhereInput
+  isNot: CorrectionCaptureWhereInput
 }
 
 input CorrectionCaptureScalarWhereInput {
@@ -4106,6 +5027,7 @@ input CorrectionCaptureScalarWhereInput {
 enum CorrectionCaptureStatus {
   error
   graded
+  invalidated
   needs_review
   processing
   queued
@@ -4229,6 +5151,22 @@ input CorrectionCaptureUpdateManyWithoutSubmittedByNestedInput {
   upsert: [CorrectionCaptureUpsertWithWhereUniqueWithoutSubmittedByInput!]
 }
 
+input CorrectionCaptureUpdateOneRequiredWithoutReviewAuditLogsNestedInput {
+  connect: CorrectionCaptureWhereUniqueInput
+  connectOrCreate: CorrectionCaptureCreateOrConnectWithoutReviewAuditLogsInput
+  create: CorrectionCaptureCreateWithoutReviewAuditLogsInput
+  update: CorrectionCaptureUpdateToOneWithWhereWithoutReviewAuditLogsInput
+  upsert: CorrectionCaptureUpsertWithoutReviewAuditLogsInput
+}
+
+input CorrectionCaptureUpdateOneRequiredWithoutReviewOverridesNestedInput {
+  connect: CorrectionCaptureWhereUniqueInput
+  connectOrCreate: CorrectionCaptureCreateOrConnectWithoutReviewOverridesInput
+  create: CorrectionCaptureCreateWithoutReviewOverridesInput
+  update: CorrectionCaptureUpdateToOneWithWhereWithoutReviewOverridesInput
+  upsert: CorrectionCaptureUpsertWithoutReviewOverridesInput
+}
+
 input CorrectionCaptureUpdateOneWithoutCorrectionExamNestedInput {
   connect: CorrectionCaptureWhereUniqueInput
   connectOrCreate: CorrectionCaptureCreateOrConnectWithoutCorrectionExamInput
@@ -4256,6 +5194,16 @@ input CorrectionCaptureUpdateToOneWithWhereWithoutCorrectionExamInput {
 
 input CorrectionCaptureUpdateToOneWithWhereWithoutEventsInput {
   data: CorrectionCaptureUpdateWithoutEventsInput!
+  where: CorrectionCaptureWhereInput
+}
+
+input CorrectionCaptureUpdateToOneWithWhereWithoutReviewAuditLogsInput {
+  data: CorrectionCaptureUpdateWithoutReviewAuditLogsInput!
+  where: CorrectionCaptureWhereInput
+}
+
+input CorrectionCaptureUpdateToOneWithWhereWithoutReviewOverridesInput {
+  data: CorrectionCaptureUpdateWithoutReviewOverridesInput!
   where: CorrectionCaptureWhereInput
 }
 
@@ -4288,6 +5236,8 @@ input CorrectionCaptureUpdateWithoutCorrectionExamInput {
   Events: CorrectionSessionEventUpdateManyWithoutCaptureNestedInput
   Exam: ExamUpdateOneRequiredWithoutCapturesNestedInput
   ResolvedBy: AgentUpdateOneWithoutResolvedCorrectionCapturesNestedInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogUpdateManyWithoutCaptureNestedInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideUpdateManyWithoutCaptureNestedInput
   Session: CorrectionSessionUpdateOneRequiredWithoutCapturesNestedInput
   Student: StudentUpdateOneWithoutCapturesNestedInput
   SubmittedBy: AgentUpdateOneWithoutSubmittedCorrectionCapturesNestedInput
@@ -4317,6 +5267,8 @@ input CorrectionCaptureUpdateWithoutEventsInput {
   CorrectionExam: CorrectionExamUpdateOneWithoutCaptureNestedInput
   Exam: ExamUpdateOneRequiredWithoutCapturesNestedInput
   ResolvedBy: AgentUpdateOneWithoutResolvedCorrectionCapturesNestedInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogUpdateManyWithoutCaptureNestedInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideUpdateManyWithoutCaptureNestedInput
   Session: CorrectionSessionUpdateOneRequiredWithoutCapturesNestedInput
   Student: StudentUpdateOneWithoutCapturesNestedInput
   SubmittedBy: AgentUpdateOneWithoutSubmittedCorrectionCapturesNestedInput
@@ -4346,6 +5298,8 @@ input CorrectionCaptureUpdateWithoutExamInput {
   CorrectionExam: CorrectionExamUpdateOneWithoutCaptureNestedInput
   Events: CorrectionSessionEventUpdateManyWithoutCaptureNestedInput
   ResolvedBy: AgentUpdateOneWithoutResolvedCorrectionCapturesNestedInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogUpdateManyWithoutCaptureNestedInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideUpdateManyWithoutCaptureNestedInput
   Session: CorrectionSessionUpdateOneRequiredWithoutCapturesNestedInput
   Student: StudentUpdateOneWithoutCapturesNestedInput
   SubmittedBy: AgentUpdateOneWithoutSubmittedCorrectionCapturesNestedInput
@@ -4375,6 +5329,70 @@ input CorrectionCaptureUpdateWithoutResolvedByInput {
   CorrectionExam: CorrectionExamUpdateOneWithoutCaptureNestedInput
   Events: CorrectionSessionEventUpdateManyWithoutCaptureNestedInput
   Exam: ExamUpdateOneRequiredWithoutCapturesNestedInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogUpdateManyWithoutCaptureNestedInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideUpdateManyWithoutCaptureNestedInput
+  Session: CorrectionSessionUpdateOneRequiredWithoutCapturesNestedInput
+  Student: StudentUpdateOneWithoutCapturesNestedInput
+  SubmittedBy: AgentUpdateOneWithoutSubmittedCorrectionCapturesNestedInput
+  artifactsPurgedAt: NullableDateTimeFieldUpdateOperationsInput
+  createdAt: DateTimeFieldUpdateOperationsInput
+  delta: NullableFloatFieldUpdateOperationsInput
+  detectionPayload: JSON
+  engineVersion: NullableStringFieldUpdateOperationsInput
+  errorMessage: NullableStringFieldUpdateOperationsInput
+  id: StringFieldUpdateOperationsInput
+  omrPayload: JSON
+  originalImagePath: StringFieldUpdateOperationsInput
+  overlayImagePath: NullableStringFieldUpdateOperationsInput
+  processingMs: NullableIntFieldUpdateOperationsInput
+  queueLatencyMs: NullableIntFieldUpdateOperationsInput
+  rectifiedImagePath: NullableStringFieldUpdateOperationsInput
+  registrationNumber: NullableStringFieldUpdateOperationsInput
+  resolvedAt: NullableDateTimeFieldUpdateOperationsInput
+  reviewNotes: NullableStringFieldUpdateOperationsInput
+  reviewReasons: CorrectionCaptureUpdatereviewReasonsInput
+  status: EnumCorrectionCaptureStatusFieldUpdateOperationsInput
+  threshold: NullableFloatFieldUpdateOperationsInput
+  updatedAt: DateTimeFieldUpdateOperationsInput
+}
+
+input CorrectionCaptureUpdateWithoutReviewAuditLogsInput {
+  CorrectionExam: CorrectionExamUpdateOneWithoutCaptureNestedInput
+  Events: CorrectionSessionEventUpdateManyWithoutCaptureNestedInput
+  Exam: ExamUpdateOneRequiredWithoutCapturesNestedInput
+  ResolvedBy: AgentUpdateOneWithoutResolvedCorrectionCapturesNestedInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideUpdateManyWithoutCaptureNestedInput
+  Session: CorrectionSessionUpdateOneRequiredWithoutCapturesNestedInput
+  Student: StudentUpdateOneWithoutCapturesNestedInput
+  SubmittedBy: AgentUpdateOneWithoutSubmittedCorrectionCapturesNestedInput
+  artifactsPurgedAt: NullableDateTimeFieldUpdateOperationsInput
+  createdAt: DateTimeFieldUpdateOperationsInput
+  delta: NullableFloatFieldUpdateOperationsInput
+  detectionPayload: JSON
+  engineVersion: NullableStringFieldUpdateOperationsInput
+  errorMessage: NullableStringFieldUpdateOperationsInput
+  id: StringFieldUpdateOperationsInput
+  omrPayload: JSON
+  originalImagePath: StringFieldUpdateOperationsInput
+  overlayImagePath: NullableStringFieldUpdateOperationsInput
+  processingMs: NullableIntFieldUpdateOperationsInput
+  queueLatencyMs: NullableIntFieldUpdateOperationsInput
+  rectifiedImagePath: NullableStringFieldUpdateOperationsInput
+  registrationNumber: NullableStringFieldUpdateOperationsInput
+  resolvedAt: NullableDateTimeFieldUpdateOperationsInput
+  reviewNotes: NullableStringFieldUpdateOperationsInput
+  reviewReasons: CorrectionCaptureUpdatereviewReasonsInput
+  status: EnumCorrectionCaptureStatusFieldUpdateOperationsInput
+  threshold: NullableFloatFieldUpdateOperationsInput
+  updatedAt: DateTimeFieldUpdateOperationsInput
+}
+
+input CorrectionCaptureUpdateWithoutReviewOverridesInput {
+  CorrectionExam: CorrectionExamUpdateOneWithoutCaptureNestedInput
+  Events: CorrectionSessionEventUpdateManyWithoutCaptureNestedInput
+  Exam: ExamUpdateOneRequiredWithoutCapturesNestedInput
+  ResolvedBy: AgentUpdateOneWithoutResolvedCorrectionCapturesNestedInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogUpdateManyWithoutCaptureNestedInput
   Session: CorrectionSessionUpdateOneRequiredWithoutCapturesNestedInput
   Student: StudentUpdateOneWithoutCapturesNestedInput
   SubmittedBy: AgentUpdateOneWithoutSubmittedCorrectionCapturesNestedInput
@@ -4405,6 +5423,8 @@ input CorrectionCaptureUpdateWithoutSessionInput {
   Events: CorrectionSessionEventUpdateManyWithoutCaptureNestedInput
   Exam: ExamUpdateOneRequiredWithoutCapturesNestedInput
   ResolvedBy: AgentUpdateOneWithoutResolvedCorrectionCapturesNestedInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogUpdateManyWithoutCaptureNestedInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideUpdateManyWithoutCaptureNestedInput
   Student: StudentUpdateOneWithoutCapturesNestedInput
   SubmittedBy: AgentUpdateOneWithoutSubmittedCorrectionCapturesNestedInput
   artifactsPurgedAt: NullableDateTimeFieldUpdateOperationsInput
@@ -4434,6 +5454,8 @@ input CorrectionCaptureUpdateWithoutStudentInput {
   Events: CorrectionSessionEventUpdateManyWithoutCaptureNestedInput
   Exam: ExamUpdateOneRequiredWithoutCapturesNestedInput
   ResolvedBy: AgentUpdateOneWithoutResolvedCorrectionCapturesNestedInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogUpdateManyWithoutCaptureNestedInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideUpdateManyWithoutCaptureNestedInput
   Session: CorrectionSessionUpdateOneRequiredWithoutCapturesNestedInput
   SubmittedBy: AgentUpdateOneWithoutSubmittedCorrectionCapturesNestedInput
   artifactsPurgedAt: NullableDateTimeFieldUpdateOperationsInput
@@ -4463,6 +5485,8 @@ input CorrectionCaptureUpdateWithoutSubmittedByInput {
   Events: CorrectionSessionEventUpdateManyWithoutCaptureNestedInput
   Exam: ExamUpdateOneRequiredWithoutCapturesNestedInput
   ResolvedBy: AgentUpdateOneWithoutResolvedCorrectionCapturesNestedInput
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogUpdateManyWithoutCaptureNestedInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideUpdateManyWithoutCaptureNestedInput
   Session: CorrectionSessionUpdateOneRequiredWithoutCapturesNestedInput
   Student: StudentUpdateOneWithoutCapturesNestedInput
   artifactsPurgedAt: NullableDateTimeFieldUpdateOperationsInput
@@ -4534,6 +5558,18 @@ input CorrectionCaptureUpsertWithoutEventsInput {
   where: CorrectionCaptureWhereInput
 }
 
+input CorrectionCaptureUpsertWithoutReviewAuditLogsInput {
+  create: CorrectionCaptureCreateWithoutReviewAuditLogsInput!
+  update: CorrectionCaptureUpdateWithoutReviewAuditLogsInput!
+  where: CorrectionCaptureWhereInput
+}
+
+input CorrectionCaptureUpsertWithoutReviewOverridesInput {
+  create: CorrectionCaptureCreateWithoutReviewOverridesInput!
+  update: CorrectionCaptureUpdateWithoutReviewOverridesInput!
+  where: CorrectionCaptureWhereInput
+}
+
 input CorrectionCaptureWhereInput {
   AND: [CorrectionCaptureWhereInput!]
   CorrectionExam: CorrectionExamNullableScalarRelationFilter
@@ -4542,6 +5578,8 @@ input CorrectionCaptureWhereInput {
   NOT: [CorrectionCaptureWhereInput!]
   OR: [CorrectionCaptureWhereInput!]
   ResolvedBy: AgentNullableScalarRelationFilter
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogListRelationFilter
+  ReviewOverrides: CorrectionCaptureReviewOverrideListRelationFilter
   Session: CorrectionSessionScalarRelationFilter
   Student: StudentNullableScalarRelationFilter
   SubmittedBy: AgentNullableScalarRelationFilter
@@ -4581,6 +5619,8 @@ input CorrectionCaptureWhereUniqueInput {
   NOT: [CorrectionCaptureWhereInput!]
   OR: [CorrectionCaptureWhereInput!]
   ResolvedBy: AgentNullableScalarRelationFilter
+  ReviewAuditLogs: CorrectionCaptureReviewAuditLogListRelationFilter
+  ReviewOverrides: CorrectionCaptureReviewOverrideListRelationFilter
   Session: CorrectionSessionScalarRelationFilter
   Student: StudentNullableScalarRelationFilter
   SubmittedBy: AgentNullableScalarRelationFilter
@@ -6795,6 +7835,17 @@ input EnumAuthChannelEnumNullableFilter {
   notIn: [AuthChannelEnum!]
 }
 
+input EnumCorrectionCaptureQuestionGradingOverrideFieldUpdateOperationsInput {
+  set: CorrectionCaptureQuestionGradingOverride
+}
+
+input EnumCorrectionCaptureQuestionGradingOverrideFilter {
+  equals: CorrectionCaptureQuestionGradingOverride
+  in: [CorrectionCaptureQuestionGradingOverride!]
+  not: NestedEnumCorrectionCaptureQuestionGradingOverrideFilter
+  notIn: [CorrectionCaptureQuestionGradingOverride!]
+}
+
 input EnumCorrectionCaptureReviewReasonNullableListFilter {
   equals: [CorrectionCaptureReviewReason!]
   has: CorrectionCaptureReviewReason
@@ -7441,6 +8492,15 @@ input ExamWhereUniqueInput {
   updatedAt: DateTimeFilter
 }
 
+input FinalizeCorrectionCaptureReviewInput {
+  captureId: String!
+  outcome: CorrectionCaptureReviewOutcome!
+  questionOverrides: [CorrectionCaptureReviewQuestionInput!]
+  reviewNotes: String
+  reviewReasons: [CorrectionCaptureReviewReason!]
+  studentId: String
+}
+
 input FloatFieldUpdateOperationsInput {
   decrement: Float
   divide: Float
@@ -7546,6 +8606,14 @@ input IntNullableFilter {
   lte: Int
   not: NestedIntNullableFilter
   notIn: [Int!]
+}
+
+input IntNullableListFilter {
+  equals: [Int!]
+  has: Int
+  hasEvery: [Int!]
+  hasSome: [Int!]
+  isEmpty: Boolean
 }
 
 type InviteAcceptanceStart {
@@ -8207,6 +9275,7 @@ type Mutation {
   deleteKlass(where: KlassWhereUniqueInput!): Klass!
   deleteKlassStudent(input: DeleteKlassStudentInput!): KlassStudentObject!
   deleteSchool(where: SchoolWhereUniqueInput!): School!
+  finalizeCorrectionCaptureReview(input: FinalizeCorrectionCaptureReviewInput!): CorrectionCaptureReviewObject!
   generateOmrTemplateVersionPdf(input: GenerateOmrTemplateVersionPdfInput!): OmrTemplateVersionPdfAsset!
   importKlassStudentsCsv(input: ImportKlassStudentsCsvInput!): KlassStudentImportResultObject!
   inviteSchoolMember(input: InviteSchoolMemberInput!): SchoolMemberInviteObject!
@@ -8222,6 +9291,7 @@ type Mutation {
   resendSchoolMemberInvite(input: ResendSchoolMemberInviteInput!): SchoolMemberInviteObject!
   resolveCorrectionCapture(input: ResolveCorrectionCaptureInput!): CorrectionCapture!
   revokeSchoolMemberInvite(input: RevokeSchoolMemberInviteInput!): SchoolMemberInviteObject!
+  saveCorrectionCaptureReviewDraft(input: SaveCorrectionCaptureReviewDraftInput!): CorrectionCaptureReviewObject!
   startCorrectionSession(input: StartCorrectionSessionInput!): CorrectionSession!
   startEmailLogin(data: StartEmailLoginInput!): EmailChallengeStart!
   startInviteAcceptance(data: StartInviteAcceptanceInput!): InviteAcceptanceStart!
@@ -8312,6 +9382,13 @@ input NestedEnumAuthChannelEnumNullableFilter {
   in: [AuthChannelEnum!]
   not: NestedEnumAuthChannelEnumNullableFilter
   notIn: [AuthChannelEnum!]
+}
+
+input NestedEnumCorrectionCaptureQuestionGradingOverrideFilter {
+  equals: CorrectionCaptureQuestionGradingOverride
+  in: [CorrectionCaptureQuestionGradingOverride!]
+  not: NestedEnumCorrectionCaptureQuestionGradingOverrideFilter
+  notIn: [CorrectionCaptureQuestionGradingOverride!]
 }
 
 input NestedEnumCorrectionCaptureStatusFilter {
@@ -9796,6 +10873,7 @@ input PublishOmrTemplateVersionInput {
 
 type Query {
   correctionEventStages: [String!]!
+  getCorrectionCaptureReview(captureId: String!): CorrectionCaptureReviewObject!
   getCourse(where: CourseWhereUniqueInput!): Course!
   getCourseAdminSettings(input: GetCourseAdminSettingsInput!): Course!
   getExam(input: GetExamInput!): Exam!
@@ -9835,6 +10913,7 @@ enum QueryMode {
 type Question {
   CorrectionQuestions: [CorrectionQuestion!]
   Exam: Exam!
+  ReviewOverrides: [CorrectionCaptureReviewOverride!]
   _count: QuestionCount!
   correct: Int!
   createdAt: DateTime!
@@ -9849,6 +10928,7 @@ type Question {
 
 type QuestionCount {
   CorrectionQuestions: Int!
+  ReviewOverrides: Int!
 }
 
 input QuestionCreateManyExamInput {
@@ -9880,6 +10960,12 @@ input QuestionCreateNestedOneWithoutCorrectionQuestionsInput {
   create: QuestionCreateWithoutCorrectionQuestionsInput
 }
 
+input QuestionCreateNestedOneWithoutReviewOverridesInput {
+  connect: QuestionWhereUniqueInput
+  connectOrCreate: QuestionCreateOrConnectWithoutReviewOverridesInput
+  create: QuestionCreateWithoutReviewOverridesInput
+}
+
 input QuestionCreateOrConnectWithoutCorrectionQuestionsInput {
   create: QuestionCreateWithoutCorrectionQuestionsInput!
   where: QuestionWhereUniqueInput!
@@ -9890,8 +10976,14 @@ input QuestionCreateOrConnectWithoutExamInput {
   where: QuestionWhereUniqueInput!
 }
 
+input QuestionCreateOrConnectWithoutReviewOverridesInput {
+  create: QuestionCreateWithoutReviewOverridesInput!
+  where: QuestionWhereUniqueInput!
+}
+
 input QuestionCreateWithoutCorrectionQuestionsInput {
   Exam: ExamCreateNestedOneWithoutQuestionsInput!
+  ReviewOverrides: CorrectionCaptureReviewOverrideCreateNestedManyWithoutQuestionInput
   correct: Int!
   createdAt: DateTime
   id: String
@@ -9904,6 +10996,20 @@ input QuestionCreateWithoutCorrectionQuestionsInput {
 
 input QuestionCreateWithoutExamInput {
   CorrectionQuestions: CorrectionQuestionCreateNestedManyWithoutQuestionInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideCreateNestedManyWithoutQuestionInput
+  correct: Int!
+  createdAt: DateTime
+  id: String
+  isActive: Boolean
+  number: Int!
+  text: String
+  updatedAt: DateTime
+  value: Float!
+}
+
+input QuestionCreateWithoutReviewOverridesInput {
+  CorrectionQuestions: CorrectionQuestionCreateNestedManyWithoutQuestionInput
+  Exam: ExamCreateNestedOneWithoutQuestionsInput!
   correct: Int!
   createdAt: DateTime
   id: String
@@ -9983,8 +11089,21 @@ input QuestionUpdateOneRequiredWithoutCorrectionQuestionsNestedInput {
   upsert: QuestionUpsertWithoutCorrectionQuestionsInput
 }
 
+input QuestionUpdateOneRequiredWithoutReviewOverridesNestedInput {
+  connect: QuestionWhereUniqueInput
+  connectOrCreate: QuestionCreateOrConnectWithoutReviewOverridesInput
+  create: QuestionCreateWithoutReviewOverridesInput
+  update: QuestionUpdateToOneWithWhereWithoutReviewOverridesInput
+  upsert: QuestionUpsertWithoutReviewOverridesInput
+}
+
 input QuestionUpdateToOneWithWhereWithoutCorrectionQuestionsInput {
   data: QuestionUpdateWithoutCorrectionQuestionsInput!
+  where: QuestionWhereInput
+}
+
+input QuestionUpdateToOneWithWhereWithoutReviewOverridesInput {
+  data: QuestionUpdateWithoutReviewOverridesInput!
   where: QuestionWhereInput
 }
 
@@ -9995,6 +11114,7 @@ input QuestionUpdateWithWhereUniqueWithoutExamInput {
 
 input QuestionUpdateWithoutCorrectionQuestionsInput {
   Exam: ExamUpdateOneRequiredWithoutQuestionsNestedInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideUpdateManyWithoutQuestionNestedInput
   correct: IntFieldUpdateOperationsInput
   createdAt: DateTimeFieldUpdateOperationsInput
   id: StringFieldUpdateOperationsInput
@@ -10007,6 +11127,20 @@ input QuestionUpdateWithoutCorrectionQuestionsInput {
 
 input QuestionUpdateWithoutExamInput {
   CorrectionQuestions: CorrectionQuestionUpdateManyWithoutQuestionNestedInput
+  ReviewOverrides: CorrectionCaptureReviewOverrideUpdateManyWithoutQuestionNestedInput
+  correct: IntFieldUpdateOperationsInput
+  createdAt: DateTimeFieldUpdateOperationsInput
+  id: StringFieldUpdateOperationsInput
+  isActive: BoolFieldUpdateOperationsInput
+  number: IntFieldUpdateOperationsInput
+  text: NullableStringFieldUpdateOperationsInput
+  updatedAt: DateTimeFieldUpdateOperationsInput
+  value: FloatFieldUpdateOperationsInput
+}
+
+input QuestionUpdateWithoutReviewOverridesInput {
+  CorrectionQuestions: CorrectionQuestionUpdateManyWithoutQuestionNestedInput
+  Exam: ExamUpdateOneRequiredWithoutQuestionsNestedInput
   correct: IntFieldUpdateOperationsInput
   createdAt: DateTimeFieldUpdateOperationsInput
   id: StringFieldUpdateOperationsInput
@@ -10029,12 +11163,19 @@ input QuestionUpsertWithoutCorrectionQuestionsInput {
   where: QuestionWhereInput
 }
 
+input QuestionUpsertWithoutReviewOverridesInput {
+  create: QuestionCreateWithoutReviewOverridesInput!
+  update: QuestionUpdateWithoutReviewOverridesInput!
+  where: QuestionWhereInput
+}
+
 input QuestionWhereInput {
   AND: [QuestionWhereInput!]
   CorrectionQuestions: CorrectionQuestionListRelationFilter
   Exam: ExamScalarRelationFilter
   NOT: [QuestionWhereInput!]
   OR: [QuestionWhereInput!]
+  ReviewOverrides: CorrectionCaptureReviewOverrideListRelationFilter
   correct: IntFilter
   createdAt: DateTimeFilter
   examId: StringFilter
@@ -10052,6 +11193,7 @@ input QuestionWhereUniqueInput {
   Exam: ExamScalarRelationFilter
   NOT: [QuestionWhereInput!]
   OR: [QuestionWhereInput!]
+  ReviewOverrides: CorrectionCaptureReviewOverrideListRelationFilter
   correct: IntFilter
   createdAt: DateTimeFilter
   examId: StringFilter
@@ -10121,6 +11263,14 @@ input RevokeSchoolMemberInviteInput {
 enum RoleEnum {
   admin
   user
+}
+
+input SaveCorrectionCaptureReviewDraftInput {
+  captureId: String!
+  questionOverrides: [CorrectionCaptureReviewQuestionInput!]
+  reviewNotes: String
+  reviewReasons: [CorrectionCaptureReviewReason!]
+  studentId: String
 }
 
 type School {
