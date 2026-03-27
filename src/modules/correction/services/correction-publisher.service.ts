@@ -57,6 +57,16 @@ export class CorrectionPublisherService {
          captureId: event.captureId,
          stage: event.stage,
       });
+      this.logger.log(
+         JSON.stringify({
+            event: 'correction_event.published',
+            eventId: event.id,
+            sessionId: event.sessionId,
+            captureId: event.captureId,
+            stage: event.stage,
+            durationMs: event.durationMs,
+         }),
+      );
 
       try {
          await this.pubSub.publish(this.topic(input.sessionId), {

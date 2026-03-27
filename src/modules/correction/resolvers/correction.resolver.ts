@@ -18,6 +18,7 @@ import { ResolveCorrectionCaptureInput } from '../inputs/resolve-correction-capt
 import { StartCorrectionSessionInput } from '../inputs/start-correction-session.input';
 import { SubmitCorrectionPhotoInput } from '../inputs/submit-correction-photo.input';
 import { CorrectionCaptureListObject } from '../objects/correction-capture-list.object';
+import { CorrectionCaptureReviewObject } from '../objects/correction-capture-review.object';
 import { CorrectionExamListObject } from '../objects/correction-exam-list.object';
 import { ExamPendingStudentCaptureListObject } from '../objects/exam-pending-student-capture-list.object';
 import { CorrectionSessionListObject } from '../objects/correction-session-list.object';
@@ -25,12 +26,17 @@ import { CorrectionPublisherService } from '../services/correction-publisher.ser
 import { StartCorrectionSessionService } from '../services/create/start-correction-session.service';
 import { SubmitCorrectionPhotoService } from '../services/create/submit-correction-photo.service';
 import { ListCorrectionCapturesService } from '../services/get/list-correction-captures.service';
+import { GetCorrectionCaptureReviewService } from '../services/get/get-correction-capture-review.service';
 import { ListExamCorrectionSessionsService } from '../services/get/list-exam-correction-sessions.service';
 import { ListExamCorrectionsService } from '../services/get/list-exam-corrections.service';
 import { ListExamPendingStudentCapturesService } from '../services/get/list-exam-pending-student-captures.service';
 import { CompleteCorrectionSessionService } from '../services/update/complete-correction-session.service';
+import { FinalizeCorrectionCaptureReviewService } from '../services/update/finalize-correction-capture-review.service';
 import { RequeueCorrectionCaptureService } from '../services/update/requeue-correction-capture.service';
 import { ResolveCorrectionCaptureService } from '../services/update/resolve-correction-capture.service';
+import { SaveCorrectionCaptureReviewDraftService } from '../services/update/save-correction-capture-review-draft.service';
+import { FinalizeCorrectionCaptureReviewInput } from '../inputs/finalize-correction-capture-review.input';
+import { SaveCorrectionCaptureReviewDraftInput } from '../inputs/save-correction-capture-review-draft.input';
 
 type CorrectionSessionEventPayload = {
    correctionSessionEvents?: CorrectionSessionEvent;
@@ -61,9 +67,12 @@ export class CorrectionResolver {
       private readonly resolveCorrectionCaptureService: ResolveCorrectionCaptureService,
       private readonly requeueCorrectionCaptureService: RequeueCorrectionCaptureService,
       private readonly listCorrectionCapturesService: ListCorrectionCapturesService,
+      private readonly getCorrectionCaptureReviewService: GetCorrectionCaptureReviewService,
       private readonly listExamCorrectionSessionsService: ListExamCorrectionSessionsService,
       private readonly listExamCorrectionsService: ListExamCorrectionsService,
       private readonly listExamPendingStudentCapturesService: ListExamPendingStudentCapturesService,
+      private readonly saveCorrectionCaptureReviewDraftService: SaveCorrectionCaptureReviewDraftService,
+      private readonly finalizeCorrectionCaptureReviewService: FinalizeCorrectionCaptureReviewService,
       private readonly publisher: CorrectionPublisherService,
       @Inject(REDIS_PUBSUB) private readonly pubSub: RedisPubSub,
    ) {}
@@ -108,6 +117,22 @@ export class CorrectionResolver {
       return this.requeueCorrectionCaptureService.run(input, user);
    }
 
+   @Mutation(() => CorrectionCaptureReviewObject)
+   async saveCorrectionCaptureReviewDraft(
+      @Args('input') input: SaveCorrectionCaptureReviewDraftInput,
+      @CurrentUser() user: AuthCurrentUser,
+   ) {
+      return this.saveCorrectionCaptureReviewDraftService.run(input, user);
+   }
+
+   @Mutation(() => CorrectionCaptureReviewObject)
+   async finalizeCorrectionCaptureReview(
+      @Args('input') input: FinalizeCorrectionCaptureReviewInput,
+      @CurrentUser() user: AuthCurrentUser,
+   ) {
+      return this.finalizeCorrectionCaptureReviewService.run(input, user);
+   }
+
    @Query(() => CorrectionCaptureListObject)
    async listCorrectionCaptures(
       @Args('input') input: ListCorrectionCapturesInput,
@@ -138,6 +163,14 @@ export class CorrectionResolver {
       @CurrentUser() user: AuthCurrentUser,
    ) {
       return this.listExamCorrectionSessionsService.run(input, user);
+   }
+
+   @Query(() => CorrectionCaptureReviewObject)
+   async getCorrectionCaptureReview(
+      @Args('captureId') captureId: string,
+      @CurrentUser() user: AuthCurrentUser,
+   ) {
+      return this.getCorrectionCaptureReviewService.run(captureId, user);
    }
 
    @Subscription(() => CorrectionSessionEvent, {

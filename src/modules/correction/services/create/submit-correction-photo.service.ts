@@ -53,6 +53,12 @@ export class SubmitCorrectionPhotoService {
       if (this.config.debugTrace) {
          this.logger.setLogLevels(['log', 'error', 'warn', 'debug', 'verbose']);
       }
+      this.operationalLog('submit_correction_photo.accepted', {
+         userId: user.id,
+         sessionId: input.sessionId,
+         hasPhotoBase64: Boolean(input.photoBase64),
+         hasPhotoFile: Boolean(input.photoFile),
+      });
       this.trace('submit_correction_photo.received', {
          userId: user.id,
          sessionId: input.sessionId,
@@ -134,6 +140,13 @@ export class SubmitCorrectionPhotoService {
          threshold,
          delta,
       });
+      this.operationalLog('submit_correction_photo.capture_created', {
+         captureId: capture.id,
+         sessionId: session.id,
+         examId: session.examId,
+         threshold,
+         delta,
+      });
 
       const queueJob = await this.correctionQueue.add(
          'omr-process',
@@ -155,6 +168,12 @@ export class SubmitCorrectionPhotoService {
       );
 
       this.trace('submit_correction_photo.job_enqueued', {
+         captureId: capture.id,
+         sessionId: session.id,
+         examId: session.examId,
+         queueJobId: queueJob.id,
+      });
+      this.operationalLog('submit_correction_photo.job_enqueued', {
          captureId: capture.id,
          sessionId: session.id,
          examId: session.examId,
@@ -291,5 +310,14 @@ export class SubmitCorrectionPhotoService {
    private trace(event: string, meta?: Record<string, unknown>) {
       if (!this.config.debugTrace) return;
       this.logger.debug(event, JSON.parse(JSON.stringify(meta ?? null)) as any);
+   }
+
+   private operationalLog(event: string, meta?: Record<string, unknown>) {
+      this.logger.log(
+         JSON.stringify({
+            event,
+            ...(meta ?? {}),
+         }),
+      );
    }
 }

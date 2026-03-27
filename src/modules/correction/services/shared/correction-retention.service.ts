@@ -64,10 +64,12 @@ export class CorrectionRetentionService
 
       for (const target of targets) {
          const keys = [
-            target.originalImagePath,
             target.rectifiedImagePath,
-            target.overlayImagePath,
-         ].filter((value): value is string => Boolean(value));
+            target.overlayImagePath ? target.originalImagePath : null,
+         ].filter(
+            (value): value is string =>
+               Boolean(value) && !String(value).startsWith('purged:'),
+         );
 
          await Promise.all(
             keys.map(async (key) => {
@@ -82,9 +84,10 @@ export class CorrectionRetentionService
          await this.prisma.correctionCapture.update({
             where: { id: target.id },
             data: {
-               originalImagePath: `purged:${target.id}`,
+               originalImagePath: target.overlayImagePath
+                  ? `purged:${target.id}`
+                  : target.originalImagePath,
                rectifiedImagePath: null,
-               overlayImagePath: null,
                artifactsPurgedAt: new Date(),
             },
          });
