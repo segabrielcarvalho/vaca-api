@@ -67,6 +67,7 @@
       "prisma-nestjs-graphql": "^21.2.0",
       "reflect-metadata": "^0.2.2",
       "rxjs": "^7.8.2",
+      "sharp": "^0.34.5",
       "winston": "^3.19.0",
       "winston-logsene": "^2.1.2",
       "zod": "^4.2.1"

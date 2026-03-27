@@ -91,6 +91,7 @@ enum CorrectionCaptureStatus {
   graded
   needs_review
   error
+  invalidated
 }
 
 enum CorrectionCaptureReviewReason {
@@ -99,6 +100,13 @@ enum CorrectionCaptureReviewReason {
   answer_ambiguous
   omr_error
   manual_review
+}
+
+enum CorrectionCaptureQuestionGradingOverride {
+  auto
+  correct
+  incorrect
+  annulled
 }
 
 enum AuthChannelEnum {
@@ -344,6 +352,8 @@ model Agent {
   StartedCorrectionSessions   CorrectionSession[]  @relation("CorrectionSessionStartedBy")
   SubmittedCorrectionCaptures CorrectionCapture[]  @relation("CorrectionCaptureSubmittedBy")
   ResolvedCorrectionCaptures  CorrectionCapture[]  @relation("CorrectionCaptureResolvedBy")
+  ReviewOverrides            CorrectionCaptureReviewOverride[] @relation("CorrectionCaptureReviewOverrideReviewedBy")
+  ReviewAuditLogs            CorrectionCaptureReviewAuditLog[] @relation("CorrectionCaptureReviewAuditLogActor")
 }
 
 model AclPermission {
@@ -567,6 +577,7 @@ model Question {
   value   Float
 
   CorrectionQuestions CorrectionQuestion[]
+  ReviewOverrides     CorrectionCaptureReviewOverride[]
 
   @@unique([examId, number])
   @@index([examId])
@@ -765,7 +776,9 @@ model CorrectionCapture {
   correctionExamId String?         @unique
   CorrectionExam   CorrectionExam? @relation(fields: [correctionExamId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
-  Events CorrectionSessionEvent[]
+  Events          CorrectionSessionEvent[]
+  ReviewOverrides CorrectionCaptureReviewOverride[]
+  ReviewAuditLogs CorrectionCaptureReviewAuditLog[]
 
   @@index([sessionId])
   @@index([examId])
@@ -773,6 +786,49 @@ model CorrectionCapture {
   @@index([submittedByAgentId])
   @@index([resolvedByAgentId])
   @@index([status])
+}
+
+model CorrectionCaptureReviewOverride {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  captureId String
+  Capture   CorrectionCapture @relation(fields: [captureId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  questionId String
+  Question   Question @relation(fields: [questionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  selectedAlternatives Int[]
+  gradingOverride      CorrectionCaptureQuestionGradingOverride @default(auto)
+  reason               String?
+  note                 String?
+
+  reviewedByAgentId String?
+  ReviewedBy        Agent?  @relation("CorrectionCaptureReviewOverrideReviewedBy", fields: [reviewedByAgentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  reviewedAt        DateTime?
+
+  @@unique([captureId, questionId])
+  @@index([captureId])
+  @@index([questionId])
+  @@index([reviewedByAgentId])
+}
+
+model CorrectionCaptureReviewAuditLog {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  captureId String
+  Capture   CorrectionCapture @relation(fields: [captureId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  actorAgentId String?
+  Actor        Agent?  @relation("CorrectionCaptureReviewAuditLogActor", fields: [actorAgentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  action  String
+  payload Json?
+
+  @@index([captureId, createdAt])
+  @@index([actorAgentId])
 }
 
 model CorrectionSessionEvent {
