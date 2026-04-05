@@ -33,4 +33,37 @@ export const parseNotificationPrefs = (value: string) => {
    return null;
 };
 
+export type AppPrefs = {
+   scannerSoundEnabled: boolean;
+   scannerVibrationEnabled: boolean;
+};
+
+const defaultAppPrefs: AppPrefs = {
+   scannerSoundEnabled: true,
+   scannerVibrationEnabled: true,
+};
+
+export const getDefaultAppPrefs = (): AppPrefs => ({
+   ...defaultAppPrefs,
+});
+
+export const parseAppPrefs = (value: unknown): AppPrefs => {
+   const base = getDefaultAppPrefs();
+   if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return base;
+   }
+
+   const data = value as Record<string, unknown>;
+   return {
+      scannerSoundEnabled:
+         typeof data.scannerSoundEnabled === 'boolean'
+            ? data.scannerSoundEnabled
+            : base.scannerSoundEnabled,
+      scannerVibrationEnabled:
+         typeof data.scannerVibrationEnabled === 'boolean'
+            ? data.scannerVibrationEnabled
+            : base.scannerVibrationEnabled,
+   };
+};
+
 export const isE164Phone = (value: string) => /^\+[1-9]\d{7,14}$/.test(value);

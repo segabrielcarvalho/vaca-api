@@ -11,6 +11,7 @@ export type ReplacedCorrectionCaptureArtifact = {
 };
 
 type CorrectionExamWriteInput = {
+   correctionExamId?: string;
    examId: string;
    studentId: string;
    filePath: string;
@@ -18,6 +19,7 @@ type CorrectionExamWriteInput = {
    status: 'pending' | 'graded' | 'returned';
    gradedByAgentId?: string | null;
    metadata?: Prisma.InputJsonValue;
+   preserveCaptureId?: string;
 };
 
 export type CorrectionExamWriteResult<T> = {
@@ -28,119 +30,87 @@ export type CorrectionExamWriteResult<T> = {
 
 @Injectable()
 export class CorrectionExamActivationService {
-   async createLatestActiveCorrection(
+   async upsertOfficialCorrection(
       tx: Prisma.TransactionClient,
       input: CorrectionExamWriteInput,
-   ): Promise<CorrectionExamWriteResult<Prisma.CorrectionExamGetPayload<{}>>> {
-      const nextAttempt = await this.getNextAttempt(tx, input);
-      const { replacedSessionIds, replacedCaptureArtifacts } =
-         await this.deleteOtherCorrections(tx, {
-            examId: input.examId,
-            studentId: input.studentId,
-         });
+   ): Promise<
+      CorrectionExamWriteResult<
+         Prisma.CorrectionExamGetPayload<Prisma.CorrectionExamDefaultArgs>
+      >
+   > {
+      const replacedSessionIds = new Set<string>();
+      const replacedCaptureArtifacts: ReplacedCorrectionCaptureArtifact[] = [];
 
-      const correction = await tx.correctionExam.create({
-         data: {
-            examId: input.examId,
-            studentId: input.studentId,
-            filePath: input.filePath,
-            attempt: nextAttempt,
-            score: input.score,
-            status: input.status,
-            gradedByAgentId: input.gradedByAgentId,
-            metadata: input.metadata,
-            isActive: true,
-         },
-      });
-
-      return {
-         correction,
-         replacedSessionIds,
-         replacedCaptureArtifacts,
-      };
-   }
-
-   async updateLatestActiveCorrection(
-      tx: Prisma.TransactionClient,
-      input: CorrectionExamWriteInput & {
-         correctionExamId: string;
-      },
-   ): Promise<CorrectionExamWriteResult<Prisma.CorrectionExamGetPayload<{}>>> {
-      const { replacedSessionIds, replacedCaptureArtifacts } =
-         await this.deleteOtherCorrections(tx, {
-            examId: input.examId,
-            studentId: input.studentId,
-            excludeCorrectionExamId: input.correctionExamId,
-         });
-
-      const correction = await tx.correctionExam.update({
-         where: { id: input.correctionExamId },
-         data: {
-            studentId: input.studentId,
-            filePath: input.filePath,
-            score: input.score,
-            status: input.status,
-            gradedByAgentId: input.gradedByAgentId,
-            metadata: input.metadata,
-            isActive: true,
-         },
-      });
-
-      return {
-         correction,
-         replacedSessionIds,
-         replacedCaptureArtifacts,
-      };
-   }
-
-   async deleteCorrectionResult(
-      tx: Prisma.TransactionClient,
-      correctionExamId: string,
-   ) {
-      return tx.correctionExam.delete({
-         where: { id: correctionExamId },
-      });
-   }
-
-   private async getNextAttempt(
-      tx: Prisma.TransactionClient,
-      input: Pick<CorrectionExamWriteInput, 'examId' | 'studentId'>,
-   ) {
-      const result = await tx.correctionExam.aggregate({
-         where: {
-            examId: input.examId,
-            studentId: input.studentId,
-         },
-         _max: {
-            attempt: true,
-         },
-      });
-
-      return (result._max.attempt ?? 0) + 1;
-   }
-
-   private async deleteOtherCorrections(
-      tx: Prisma.TransactionClient,
-      input: {
-         examId: string;
-         studentId: string;
-         excludeCorrectionExamId?: string;
-      },
-   ): Promise<{
-      replacedSessionIds: string[];
-      replacedCaptureArtifacts: ReplacedCorrectionCaptureArtifact[];
-   }> {
-      const existingCorrections = await tx.correctionExam.findMany({
-         where: {
-            examId: input.examId,
-            studentId: input.studentId,
-            ...(input.excludeCorrectionExamId
-               ? {
-                    id: {
-                       not: input.excludeCorrectionExamId,
+      const currentCorrection = input.correctionExamId
+         ? await tx.correctionExam.findUnique({
+              where: { id: input.correctionExamId },
+              select: {
+                 id: true,
+                 examId: true,
+                 studentId: true,
+                 Capture: {
+                    select: {
+                       id: true,
+                       sessionId: true,
+                       originalImagePath: true,
+                       rectifiedImagePath: true,
+                       overlayImagePath: true,
                     },
-                 }
-               : {}),
+                 },
+              },
+           })
+         : null;
+
+      if (currentCorrection && currentCorrection.examId === input.examId) {
+         const conflictingCorrections = await this.deleteConflictingCorrections(
+            tx,
+            {
+               examId: input.examId,
+               studentId: input.studentId,
+               excludeCorrectionExamId: currentCorrection.id,
+            },
+         );
+         conflictingCorrections.replacedSessionIds.forEach((sessionId) =>
+            replacedSessionIds.add(sessionId),
+         );
+         replacedCaptureArtifacts.push(
+            ...conflictingCorrections.replacedCaptureArtifacts,
+         );
+
+         const detachedCapture = await this.detachPreviousOfficialCapture(tx, {
+            correctionExamId: currentCorrection.id,
+            capture: currentCorrection.Capture ?? null,
+            preserveCaptureId: input.preserveCaptureId,
+         });
+         if (detachedCapture) {
+            replacedSessionIds.add(detachedCapture.sessionId);
+            replacedCaptureArtifacts.push(detachedCapture);
+         }
+
+         const correction = await tx.correctionExam.update({
+            where: { id: currentCorrection.id },
+            data: {
+               studentId: input.studentId,
+               filePath: input.filePath,
+               score: input.score,
+               status: input.status,
+               gradedByAgentId: input.gradedByAgentId,
+               metadata: input.metadata,
+               isActive: true,
+            },
+         });
+
+         return {
+            correction,
+            replacedSessionIds: [...replacedSessionIds],
+            replacedCaptureArtifacts,
+         };
+      }
+
+      const existingCorrection = await tx.correctionExam.findFirst({
+         where: {
+            examId: input.examId,
+            studentId: input.studentId,
          },
          select: {
             id: true,
@@ -156,15 +126,125 @@ export class CorrectionExamActivationService {
          },
       });
 
-      if (existingCorrections.length === 0) {
+      const detachedCapture = await this.detachPreviousOfficialCapture(tx, {
+         correctionExamId: existingCorrection?.id ?? null,
+         capture: existingCorrection?.Capture ?? null,
+         preserveCaptureId: input.preserveCaptureId,
+      });
+      if (detachedCapture) {
+         replacedSessionIds.add(detachedCapture.sessionId);
+         replacedCaptureArtifacts.push(detachedCapture);
+      }
+
+      const correction = existingCorrection
+         ? await tx.correctionExam.update({
+              where: { id: existingCorrection.id },
+              data: {
+                 filePath: input.filePath,
+                 score: input.score,
+                 status: input.status,
+                 gradedByAgentId: input.gradedByAgentId,
+                 metadata: input.metadata,
+                 isActive: true,
+              },
+           })
+         : await tx.correctionExam.create({
+              data: {
+                 examId: input.examId,
+                 studentId: input.studentId,
+                 filePath: input.filePath,
+                 score: input.score,
+                 status: input.status,
+                 gradedByAgentId: input.gradedByAgentId,
+                 metadata: input.metadata,
+                 isActive: true,
+              },
+           });
+
+      return {
+         correction,
+         replacedSessionIds: [...replacedSessionIds],
+         replacedCaptureArtifacts,
+      };
+   }
+
+   async invalidateOtherPendingReviewCaptures(
+      tx: Prisma.TransactionClient,
+      input: {
+         examId: string;
+         studentId: string;
+         preserveCaptureId: string;
+      },
+   ) {
+      await tx.correctionCapture.updateMany({
+         where: {
+            examId: input.examId,
+            studentId: input.studentId,
+            status: 'needs_review',
+            id: {
+               not: input.preserveCaptureId,
+            },
+         },
+         data: {
+            status: 'invalidated',
+            correctionExamId: null,
+            resolvedAt: new Date(),
+            errorMessage: 'Captura substituída por uma revisão mais recente.',
+         },
+      });
+   }
+
+   async deleteCorrectionResult(
+      tx: Prisma.TransactionClient,
+      correctionExamId: string,
+   ) {
+      return tx.correctionExam.delete({
+         where: { id: correctionExamId },
+      });
+   }
+
+   private async deleteConflictingCorrections(
+      tx: Prisma.TransactionClient,
+      input: {
+         examId: string;
+         studentId: string;
+         excludeCorrectionExamId: string;
+      },
+   ): Promise<{
+      replacedSessionIds: string[];
+      replacedCaptureArtifacts: ReplacedCorrectionCaptureArtifact[];
+   }> {
+      const conflictingCorrections = await tx.correctionExam.findMany({
+         where: {
+            examId: input.examId,
+            studentId: input.studentId,
+            id: {
+               not: input.excludeCorrectionExamId,
+            },
+         },
+         select: {
+            id: true,
+            Capture: {
+               select: {
+                  id: true,
+                  sessionId: true,
+                  originalImagePath: true,
+                  rectifiedImagePath: true,
+                  overlayImagePath: true,
+               },
+            },
+         },
+      });
+
+      if (conflictingCorrections.length === 0) {
          return {
             replacedSessionIds: [],
             replacedCaptureArtifacts: [],
          };
       }
 
-      const correctionIds = existingCorrections.map((item) => item.id);
-      const replacedCaptureArtifacts = existingCorrections
+      const correctionIds = conflictingCorrections.map((item) => item.id);
+      const replacedCaptureArtifacts = conflictingCorrections
          .map((item) =>
             item.Capture
                ? {
@@ -183,29 +263,21 @@ export class CorrectionExamActivationService {
             ): captureArtifact is ReplacedCorrectionCaptureArtifact =>
                Boolean(captureArtifact),
          );
-      const captures = replacedCaptureArtifacts.map((capture) => ({
-         id: capture.captureId,
-         sessionId: capture.sessionId,
-      }));
-      const captureIds = captures.map((capture) => capture.id);
 
-      if (captureIds.length > 0) {
-         await tx.correctionSessionEvent.deleteMany({
-            where: {
-               captureId: {
-                  in: captureIds,
+      await Promise.all(
+         replacedCaptureArtifacts.map((capture) =>
+            tx.correctionCapture.update({
+               where: { id: capture.captureId },
+               data: {
+                  correctionExamId: null,
+                  status: 'invalidated',
+                  resolvedAt: new Date(),
+                  errorMessage:
+                     'Captura substituída por uma correção mais recente.',
                },
-            },
-         });
-
-         await tx.correctionCapture.deleteMany({
-            where: {
-               id: {
-                  in: captureIds,
-               },
-            },
-         });
-      }
+            }),
+         ),
+      );
 
       await tx.correctionExam.deleteMany({
          where: {
@@ -217,9 +289,53 @@ export class CorrectionExamActivationService {
 
       return {
          replacedSessionIds: Array.from(
-            new Set(captures.map((capture) => capture.sessionId)),
+            new Set(
+               replacedCaptureArtifacts.map((capture) => capture.sessionId),
+            ),
          ),
          replacedCaptureArtifacts,
+      };
+   }
+
+   private async detachPreviousOfficialCapture(
+      tx: Prisma.TransactionClient,
+      input: {
+         correctionExamId: string | null;
+         capture: {
+            id: string;
+            sessionId: string;
+            originalImagePath: string | null;
+            rectifiedImagePath: string | null;
+            overlayImagePath: string | null;
+         } | null;
+         preserveCaptureId?: string;
+      },
+   ): Promise<ReplacedCorrectionCaptureArtifact | null> {
+      if (
+         !input.correctionExamId ||
+         !input.capture ||
+         input.capture.id === input.preserveCaptureId
+      ) {
+         return null;
+      }
+
+      await tx.correctionCapture.update({
+         where: { id: input.capture.id },
+         data: {
+            correctionExamId: null,
+            status: 'invalidated',
+            resolvedAt: new Date(),
+            errorMessage: 'Captura substituída por uma correção mais recente.',
+         },
+      });
+
+      return {
+         correctionExamId: input.correctionExamId,
+         captureId: input.capture.id,
+         sessionId: input.capture.sessionId,
+         originalImagePath: input.capture.originalImagePath,
+         rectifiedImagePath: input.capture.rectifiedImagePath,
+         overlayImagePath: input.capture.overlayImagePath,
       };
    }
 }

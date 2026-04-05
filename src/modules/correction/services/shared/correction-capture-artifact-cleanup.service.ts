@@ -71,11 +71,15 @@ export class CorrectionCaptureArtifactCleanupService {
                   result.reason instanceof Error
                      ? result.reason.message
                      : String(result.reason),
-               captureIds: Array.from(new Set(refs.map((ref) => ref.captureId))),
+               captureIds: Array.from(
+                  new Set(refs.map((ref) => ref.captureId)),
+               ),
                correctionExamIds: Array.from(
                   new Set(refs.map((ref) => ref.correctionExamId)),
                ),
-               sessionIds: Array.from(new Set(refs.map((ref) => ref.sessionId))),
+               sessionIds: Array.from(
+                  new Set(refs.map((ref) => ref.sessionId)),
+               ),
             }),
          );
       });

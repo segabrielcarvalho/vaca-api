@@ -158,7 +158,10 @@ export class CorrectionReviewGradingService {
       };
 
       if (Array.isArray(omr.answers) && omr.answers.length > 0) {
-         const values = Array.from({ length: questionCount }, () => [] as number[]);
+         const values = Array.from(
+            { length: questionCount },
+            () => [] as number[],
+         );
 
          for (const answer of omr.answers) {
             const questionIndex = (answer.question ?? 0) - 1;
@@ -181,8 +184,13 @@ export class CorrectionReviewGradingService {
          return values;
       }
 
-      const picks = Array.isArray(omr.answers_numeric) ? omr.answers_numeric : [];
-      const values = Array.from({ length: questionCount }, () => [] as number[]);
+      const picks = Array.isArray(omr.answers_numeric)
+         ? omr.answers_numeric
+         : [];
+      const values = Array.from(
+         { length: questionCount },
+         () => [] as number[],
+      );
 
       for (let i = 0; i < questionCount; i += 1) {
          const pick = picks[i];

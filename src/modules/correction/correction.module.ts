@@ -12,6 +12,7 @@ import { CorrectionResolver } from './resolvers/correction.resolver';
 import { CorrectionPublisherService } from './services/correction-publisher.service';
 import { StartCorrectionSessionService } from './services/create/start-correction-session.service';
 import { SubmitCorrectionPhotoService } from './services/create/submit-correction-photo.service';
+import { GetCorrectionDashboardService } from './services/get/get-correction-dashboard.service';
 import { GetCorrectionCaptureReviewService } from './services/get/get-correction-capture-review.service';
 import { ListCorrectionCapturesService } from './services/get/list-correction-captures.service';
 import { ListExamCorrectionSessionsService } from './services/get/list-exam-correction-sessions.service';
@@ -58,6 +59,7 @@ import { CorrectionCaptureFieldsResolver } from './resolvers/correction-capture-
       SaveCorrectionCaptureReviewDraftService,
       FinalizeCorrectionCaptureReviewService,
       ListCorrectionCapturesService,
+      GetCorrectionDashboardService,
       GetCorrectionCaptureReviewService,
       ListExamCorrectionSessionsService,
       ListExamCorrectionsService,

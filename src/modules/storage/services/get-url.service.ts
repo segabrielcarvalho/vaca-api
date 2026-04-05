@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { STORAGE_PROVIDER } from '../providers';
 import type IS3Provider from '../providers/s3/s3.interface';
@@ -6,8 +6,6 @@ import storageConfig from '../storage.config';
 
 @Injectable()
 export class GetUrlService {
-   private readonly logger = new Logger(GetUrlService.name);
-
    constructor(
       @Inject(storageConfig.KEY)
       private readonly config: ConfigType<typeof storageConfig>,
@@ -22,12 +20,10 @@ export class GetUrlService {
       inline = true,
    ): Promise<string> {
       const key = path;
-      const preserveBucketPrefix =
-         this.config.environment === 'local';
+      const preserveBucketPrefix = this.config.environment === 'local';
       const publicHost = this.resolvePublicHost();
 
       if (publicHost) {
-         this.logger.debug(`Signing public URL for "${key}" via ${publicHost}.`);
          return this.storageProvider.getCdnSignedUrl(
             key,
             publicHost,

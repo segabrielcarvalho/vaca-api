@@ -43,6 +43,9 @@ CREATE TYPE "AuthChallengeTypeEnum" AS ENUM ('invite_email', 'login_email');
 -- CreateEnum
 CREATE TYPE "AuthAuditEventTypeEnum" AS ENUM ('invite_created', 'invite_sent', 'invite_started', 'invite_verified', 'invite_completed', 'invite_revoked', 'login_email_started', 'login_email_verified', 'login_email_magic_consumed', 'session_created', 'session_refreshed', 'session_revoked', 'logout');
 
+-- CreateEnum
+CREATE TYPE "AppFeedbackCategoryEnum" AS ENUM ('bug', 'suggestion', 'other');
+
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
@@ -69,11 +72,26 @@ CREATE TABLE "UserProfile" (
     "timezone" TEXT NOT NULL,
     "locale" TEXT NOT NULL,
     "notificationPrefsJson" JSONB NOT NULL,
+    "appPrefsJson" JSONB NOT NULL DEFAULT '{}',
     "onboardingCompletedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "UserProfile_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AppFeedback" (
+    "id" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "userId" TEXT NOT NULL,
+    "category" "AppFeedbackCategoryEnum" NOT NULL,
+    "channel" "AuthChannelEnum" NOT NULL,
+    "message" TEXT NOT NULL,
+    "metadataJson" JSONB,
+
+    CONSTRAINT "AppFeedback_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -345,7 +363,6 @@ CREATE TABLE "CorrectionExam" (
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "datetime" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "filePath" TEXT NOT NULL,
-    "attempt" INTEGER NOT NULL DEFAULT 1,
     "score" DOUBLE PRECISION,
     "status" "CorrectionStatus" NOT NULL DEFAULT 'pending',
     "metadata" JSONB,
@@ -534,6 +551,12 @@ CREATE UNIQUE INDEX "UserProfile_userId_key" ON "UserProfile"("userId");
 CREATE INDEX "UserProfile_phoneE164_idx" ON "UserProfile"("phoneE164");
 
 -- CreateIndex
+CREATE INDEX "AppFeedback_userId_createdAt_idx" ON "AppFeedback"("userId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "AppFeedback_category_idx" ON "AppFeedback"("category");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "AuthInvite_tokenHash_key" ON "AuthInvite"("tokenHash");
 
 -- CreateIndex
@@ -699,7 +722,7 @@ CREATE INDEX "CorrectionExam_studentId_idx" ON "CorrectionExam"("studentId");
 CREATE INDEX "CorrectionExam_gradedByAgentId_idx" ON "CorrectionExam"("gradedByAgentId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "CorrectionExam_examId_studentId_attempt_key" ON "CorrectionExam"("examId", "studentId", "attempt");
+CREATE UNIQUE INDEX "CorrectionExam_examId_studentId_key" ON "CorrectionExam"("examId", "studentId");
 
 -- CreateIndex
 CREATE INDEX "OmrTemplate_courseId_idx" ON "OmrTemplate"("courseId");
@@ -796,6 +819,9 @@ CREATE UNIQUE INDEX "CorrectionQuestion_correctionId_questionId_key" ON "Correct
 
 -- AddForeignKey
 ALTER TABLE "UserProfile" ADD CONSTRAINT "UserProfile_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "AppFeedback" ADD CONSTRAINT "AppFeedback_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "AuthInvite" ADD CONSTRAINT "AuthInvite_invitedByUserId_fkey" FOREIGN KEY ("invitedByUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;

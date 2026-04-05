@@ -1,8 +1,14 @@
 import { ListCoursesService } from '../../list/course.service';
+import { RoleEnum } from '../../../../../../.prisma/client';
 
 jest.mock('winston-logsene', () => jest.fn());
 
 describe('ListCoursesService', () => {
+   const adminUser = {
+      id: 'user-admin',
+      role: RoleEnum.admin,
+      selectedSchoolId: 'school-1',
+   };
    let prisma: {
       course: {
          count: jest.Mock;
@@ -46,10 +52,13 @@ describe('ListCoursesService', () => {
       prisma.course.count.mockResolvedValue(2);
       prisma.course.findMany.mockResolvedValue([{ id: 'c1' }, { id: 'c2' }]);
 
-      const result = await service.run({
-         where: { name: { equals: 'Alpha' } },
-         take: 10,
-      } as any);
+      const result = await service.run(
+         {
+            where: { name: { equals: 'Alpha' } },
+            take: 10,
+         } as any,
+         adminUser as any,
+      );
 
       expect(rules.applyDefaultActiveFilter).toHaveBeenCalledWith({
          name: { equals: 'Alpha' },

@@ -62,9 +62,6 @@ export class CorrectionCaptureReviewObject {
    @Field(() => Float, { nullable: true })
    score?: number | null;
 
-   @Field(() => Int, { nullable: true })
-   attempt?: number | null;
-
    @Field(() => [CorrectionCaptureReviewQuestionObject])
    questions!: CorrectionCaptureReviewQuestionObject[];
 

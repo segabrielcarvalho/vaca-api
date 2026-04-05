@@ -50,6 +50,7 @@ export class StartEmailLoginService {
          select: {
             id: true,
             role: true,
+            isTest: true,
             Profile: { select: { name: true } },
          },
       });
@@ -63,12 +64,14 @@ export class StartEmailLoginService {
          role: user.role,
       });
 
-      await this.challengeService.assertRateLimit({
-         email,
-         type: AuthChallengeTypeEnum.login_email,
-         ip: meta?.ip,
-         deviceId: input.deviceId,
-      });
+      if (!user.isTest) {
+         await this.challengeService.assertRateLimit({
+            email,
+            type: AuthChallengeTypeEnum.login_email,
+            ip: meta?.ip,
+            deviceId: input.deviceId,
+         });
+      }
 
       const code = generateOtpCode();
       const magicToken = generateRandomToken(40);

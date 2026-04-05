@@ -45,6 +45,9 @@ export class MeService {
          throw new UnauthorizedException('Usuário nao encontrado.');
       }
 
-      return currentUser;
+      return {
+         ...currentUser,
+         selectedSchoolId: user.selectedSchoolId,
+      } as User;
    }
 }

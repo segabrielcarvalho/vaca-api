@@ -25,7 +25,7 @@ describe('FinalizeCorrectionCaptureReviewService', () => {
                sessionId: 'session-1',
                studentId: 'student-1',
                registrationNumber: 'REG-001',
-               correctionExamId: 'correction-1',
+               correctionExamId: null,
                status: 'needs_review',
                reviewReasons: [],
                reviewNotes: null,
@@ -43,15 +43,7 @@ describe('FinalizeCorrectionCaptureReviewService', () => {
                      },
                   ],
                },
-               CorrectionExam: {
-                  id: 'correction-1',
-                  Items: [
-                     {
-                        questionId: 'question-1',
-                        selected: 1,
-                     },
-                  ],
-               },
+               CorrectionExam: null,
                ReviewOverrides: [],
             }),
             update: jest.fn().mockResolvedValue(undefined),
@@ -86,8 +78,7 @@ describe('FinalizeCorrectionCaptureReviewService', () => {
       };
       const correctionExamActivation = {
          deleteCorrectionResult: jest.fn(),
-         createLatestActiveCorrection: jest.fn(),
-         updateLatestActiveCorrection: jest.fn().mockResolvedValue({
+         upsertOfficialCorrection: jest.fn().mockResolvedValue({
             correction: {
                id: 'correction-1',
             },
@@ -105,7 +96,9 @@ describe('FinalizeCorrectionCaptureReviewService', () => {
          }),
       };
       const artifactCleanup = {
-         cleanupReplacedCaptureArtifacts: jest.fn().mockResolvedValue(undefined),
+         cleanupReplacedCaptureArtifacts: jest
+            .fn()
+            .mockResolvedValue(undefined),
       };
       const grading = {
          buildQuestionStates: jest.fn().mockReturnValue([
@@ -157,32 +150,32 @@ describe('FinalizeCorrectionCaptureReviewService', () => {
       ).resolves.toEqual({ id: 'capture-1' });
 
       expect(
-         correctionExamActivation.updateLatestActiveCorrection,
+         correctionExamActivation.upsertOfficialCorrection,
       ).toHaveBeenCalledWith(
          tx,
          expect.objectContaining({
-            correctionExamId: 'correction-1',
             filePath: 'current/overlay.jpg',
             studentId: 'student-1',
             score: 1,
+            preserveCaptureId: 'capture-1',
          }),
       );
-      expect(artifactCleanup.cleanupReplacedCaptureArtifacts).toHaveBeenCalledWith(
-         {
-            replacedCaptureArtifacts: [
-               {
-                  correctionExamId: 'correction-old',
-                  captureId: 'capture-old',
-                  sessionId: 'session-previous',
-                  originalImagePath: 'previous/original.jpg',
-                  rectifiedImagePath: null,
-                  overlayImagePath: 'previous/overlay.jpg',
-               },
-            ],
-            preservedPaths: ['current/overlay.jpg', null],
-            source: 'finalize_correction_capture_review',
-         },
-      );
+      expect(
+         artifactCleanup.cleanupReplacedCaptureArtifacts,
+      ).toHaveBeenCalledWith({
+         replacedCaptureArtifacts: [
+            {
+               correctionExamId: 'correction-old',
+               captureId: 'capture-old',
+               sessionId: 'session-previous',
+               originalImagePath: 'previous/original.jpg',
+               rectifiedImagePath: null,
+               overlayImagePath: 'previous/overlay.jpg',
+            },
+         ],
+         preservedPaths: ['current/overlay.jpg', null],
+         source: 'finalize_correction_capture_review',
+      });
       expect(metrics.refreshSessionMetrics).toHaveBeenCalledWith('session-1');
       expect(metrics.refreshSessionMetrics).toHaveBeenCalledWith(
          'session-previous',

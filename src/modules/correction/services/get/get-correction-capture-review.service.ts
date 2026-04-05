@@ -81,6 +81,20 @@ export class GetCorrectionCaptureReviewService {
          throw new NotFoundException('Capture não encontrado.');
       }
 
+      const fallbackCorrection =
+         !capture.CorrectionExam && capture.studentId
+            ? await this.prisma.correctionExam.findFirst({
+                 where: {
+                    examId: capture.examId,
+                    studentId: capture.studentId,
+                 },
+                 include: {
+                    Items: true,
+                 },
+              })
+            : null;
+      const effectiveCorrection = capture.CorrectionExam ?? fallbackCorrection;
+
       const questions = this.grading.buildQuestionStates({
          questions: capture.Exam.Questions,
          omrPayload: capture.omrPayload as Prisma.JsonValue | null | undefined,
@@ -91,7 +105,7 @@ export class GetCorrectionCaptureReviewService {
             reason: override.reason,
             note: override.note,
          })),
-         existingItems: capture.CorrectionExam?.Items.map((item) => ({
+         existingItems: effectiveCorrection?.Items.map((item) => ({
             questionId: item.questionId,
             selected: item.selected,
          })),
@@ -122,9 +136,8 @@ export class GetCorrectionCaptureReviewService {
                  email: capture.Student.User?.email ?? null,
               }
             : null,
-         correctionExamId: capture.CorrectionExam?.id ?? null,
-         score: capture.CorrectionExam?.score ?? null,
-         attempt: capture.CorrectionExam?.attempt ?? null,
+         correctionExamId: effectiveCorrection?.id ?? null,
+         score: effectiveCorrection?.score ?? null,
          questions: questions.map((question) =>
             this.mapQuestionState(question),
          ),

@@ -32,6 +32,15 @@ export class ListCorrectionCapturesService {
             take,
             orderBy: [{ createdAt: 'desc' }],
             include: {
+               Student: {
+                  include: {
+                     User: {
+                        include: {
+                           Profile: true,
+                        },
+                     },
+                  },
+               },
                CorrectionExam: true,
             },
          }),

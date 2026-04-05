@@ -25,9 +25,6 @@ export class StudentDetailResultObject {
    @Field()
    courseName!: string;
 
-   @Field(() => Int)
-   attempt!: number;
-
    @Field(() => Float, { nullable: true })
    score?: number | null;
 

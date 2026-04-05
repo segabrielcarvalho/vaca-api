@@ -27,13 +27,19 @@ export class KlassResolver {
    ) {}
 
    @Query(() => KlassListObject)
-   async listKlasses(@Args() args: FindManyKlassArgs) {
-      return this.listKlassesService.run(args);
+   async listKlasses(
+      @CurrentUser() user: AuthCurrentUser,
+      @Args() args: FindManyKlassArgs,
+   ) {
+      return this.listKlassesService.run(args, user);
    }
 
    @Query(() => Klass)
-   async getKlass(@Args() args: FindUniqueKlassArgs) {
-      return this.getKlassService.run(args);
+   async getKlass(
+      @CurrentUser() user: AuthCurrentUser,
+      @Args() args: FindUniqueKlassArgs,
+   ) {
+      return this.getKlassService.run(args, user);
    }
 
    @ScopedAuthorized({

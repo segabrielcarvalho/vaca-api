@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { RoleEnum } from '../../../../../.prisma/client';
 import { AuthCurrentUser } from '../../../auth/services/auth-context.service';
 import { GetStudentDetailInput } from '../../inputs/get-student-detail.input';
 import { StudentDetailObject } from '../../objects/student-detail.object';
@@ -67,7 +68,10 @@ export class GetStudentDetailService {
          throw new NotFoundException('Aluno não encontrado.');
       }
 
-      if (user.selectedSchoolId && student.schoolId !== user.selectedSchoolId) {
+      if (
+         user.role !== RoleEnum.admin &&
+         student.schoolId !== user.selectedSchoolId
+      ) {
          throw new NotFoundException('Aluno não encontrado.');
       }
 
@@ -130,7 +134,6 @@ export class GetStudentDetailService {
             courseId: correction.Exam.Klass.courseId,
             courseName: correction.Exam.Klass.Course.name,
             isActive: correction.Exam.isActive,
-            attemptCount: (current?.attemptCount ?? 0) + 1,
             bestScore: nextBestScore,
             lastCorrectionAt:
                current?.lastCorrectionAt &&
@@ -150,7 +153,6 @@ export class GetStudentDetailService {
          klassName: correction.Exam.Klass.name,
          courseId: correction.Exam.Klass.courseId,
          courseName: correction.Exam.Klass.Course.name,
-         attempt: correction.attempt,
          score: correction.score,
          status: correction.status,
          correctAnswersCount: correction.Items.filter((item) => item.isCorrect)

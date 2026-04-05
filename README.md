@@ -65,6 +65,11 @@ API GraphQL desenvolvida com NestJS para o projeto VACA (Virtual Assistant for C
    pnpm db:seed
    ```
 
+O seed padrão agora também cria uma instituição demo para review nas lojas:
+- institution code: `VACAREVIEW`
+- reviewer email: `reviewer@vaca.local`
+- dados mínimos de turma, prova, sessão e captura para validação do fluxo mobile
+
 ## 🚀 Executando a Aplicação
 
 ```bash

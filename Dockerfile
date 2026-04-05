@@ -1,7 +1,18 @@
-FROM node:22.17.1-alpine AS base
+ARG NODE_VERSION=24.14.1-bookworm-slim
+ARG PNPM_VERSION=10.32.1
 
-RUN apk add --no-cache openssl
-RUN npm install -g pnpm
+FROM node:${NODE_VERSION} AS base
+
+ARG PNPM_VERSION
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+
+RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
 
 WORKDIR /app
 
@@ -12,56 +23,54 @@ RUN pnpm install --frozen-lockfile
 
 FROM base AS build
 
-COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+ARG DATABASE_URL=postgresql://docker:docker@localhost:5432/postgres?schema=public
+ENV DATABASE_URL=${DATABASE_URL}
 
-RUN pnpm prisma generate
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json pnpm-lock.yaml nest-cli.json tsconfig.json tsconfig.build.json tsconfig.spec.json prisma.config.ts ./
+COPY prisma ./prisma
+COPY scripts ./scripts
+COPY src ./src
+COPY @types ./@types
+COPY docs ./docs
+
+RUN pnpm generate
 RUN pnpm build
 
-FROM base AS runtime
-
-WORKDIR /app
-
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=build /app/package.json ./package.json
-COPY --from=build /app/prisma ./prisma
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/src ./src
-COPY .env .env
-
-RUN mkdir -p /app/logs
-RUN mkdir -p /app/@generated
-
-RUN chmod -R u+w /app/node_modules/.pnpm
-RUN find /app/node_modules -type d -name ".prisma" -exec chmod -R u+w {} +
-
-RUN pnpm exec prisma generate
-
-EXPOSE 5000
-
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 CMD \
-   node -e "require('http').get('http://localhost:5000/api/health', res => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
-
-CMD ["node", "dist/src/main"]
-
-FROM runtime AS staging
-
-ENV NODE_ENV=staging
-
-FROM runtime AS production
+FROM base AS production
 
 ENV NODE_ENV=production
 
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json pnpm-lock.yaml prisma.config.ts tsconfig.json ./
+COPY prisma ./prisma
+COPY scripts ./scripts
+COPY config ./config
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/src/modules/graphql/@generated ./src/modules/graphql/@generated
+
+EXPOSE 11000
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 CMD \
+  node -e "require('http').get('http://127.0.0.1:11000/api/health', res => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+
+CMD ["node", "dist/src/main.js"]
+
 FROM base AS development
 
-WORKDIR /app
+ENV NODE_ENV=development
 
-RUN npm install -g pnpm
-
-COPY . .
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json pnpm-lock.yaml nest-cli.json tsconfig.json tsconfig.build.json tsconfig.spec.json prisma.config.ts ./
+COPY prisma ./prisma
+COPY scripts ./scripts
+COPY src ./src
+COPY @types ./@types
+COPY docs ./docs
+COPY start.sh ./start.sh
 
 RUN chmod +x /app/start.sh
 
-EXPOSE 5000
+EXPOSE 11000
 
 CMD ["/bin/sh", "/app/start.sh"]

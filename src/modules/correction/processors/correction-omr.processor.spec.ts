@@ -5,7 +5,6 @@ describe('CorrectionOmrProcessor', () => {
    const originalFetch = global.fetch;
    let logger: {
       setContext: jest.Mock;
-      setLogLevels: jest.Mock;
       log: jest.Mock;
       debug: jest.Mock;
    };
@@ -13,7 +12,6 @@ describe('CorrectionOmrProcessor', () => {
    beforeEach(() => {
       logger = {
          setContext: jest.fn(),
-         setLogLevels: jest.fn(),
          log: jest.fn(),
          debug: jest.fn(),
       };
@@ -68,6 +66,7 @@ describe('CorrectionOmrProcessor', () => {
       };
       const tx = {
          correctionQuestion: {
+            deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
             createMany: jest.fn().mockResolvedValue({ count: 2 }),
          },
          correctionCapture: {
@@ -83,17 +82,18 @@ describe('CorrectionOmrProcessor', () => {
          publish: jest.fn().mockResolvedValue(undefined),
       };
       const correctionExamActivation = {
-         createLatestActiveCorrection: jest.fn().mockResolvedValue({
+         upsertOfficialCorrection: jest.fn().mockResolvedValue({
             correction: {
                id: 'correction-1',
-               attempt: 1,
             },
             replacedSessionIds: [],
             replacedCaptureArtifacts: [],
          }),
       };
       const artifactCleanup = {
-         cleanupReplacedCaptureArtifacts: jest.fn().mockResolvedValue(undefined),
+         cleanupReplacedCaptureArtifacts: jest
+            .fn()
+            .mockResolvedValue(undefined),
       };
       const metrics = {
          refreshSessionMetrics: jest.fn().mockResolvedValue(undefined),
@@ -160,7 +160,7 @@ describe('CorrectionOmrProcessor', () => {
       expect(omrRequest.masterAnswers).toEqual([1, 3]);
 
       expect(
-         correctionExamActivation.createLatestActiveCorrection,
+         correctionExamActivation.upsertOfficialCorrection,
       ).toHaveBeenCalledWith(
          tx,
          expect.objectContaining({
@@ -169,6 +169,9 @@ describe('CorrectionOmrProcessor', () => {
             score: 1,
          }),
       );
+      expect(tx.correctionQuestion.deleteMany).toHaveBeenCalledWith({
+         where: { correctionId: 'correction-1' },
+      });
       expect(tx.correctionQuestion.createMany).toHaveBeenCalledWith({
          data: [
             {
@@ -196,27 +199,30 @@ describe('CorrectionOmrProcessor', () => {
                correctAnswersCount: 1,
                questionCount: 2,
                score: 1,
-               attempt: 1,
                registrationNumber: 'REG-001',
             }),
          }),
       );
       expect(metrics.refreshSessionMetrics).toHaveBeenCalledWith('session-1');
-      expect(artifactCleanup.cleanupReplacedCaptureArtifacts).toHaveBeenCalledWith(
+      expect(
+         artifactCleanup.cleanupReplacedCaptureArtifacts,
+      ).toHaveBeenCalledWith(
          expect.objectContaining({
             replacedCaptureArtifacts: [],
             preservedPaths: ['original/path.jpg', undefined],
             source: 'correction_omr',
          }),
       );
-      expect(logger.setLogLevels).toHaveBeenCalled();
-      expect(logger.debug).toHaveBeenCalledWith(
-         'correction_omr.capture_graded',
-         expect.objectContaining({
-            captureId: 'capture-1',
-            correctionId: 'correction-1',
-         }),
+      expect(logger.log).toHaveBeenCalledWith(
+         expect.stringContaining('"event":"correction_omr.capture_graded"'),
       );
+      expect(logger.log).toHaveBeenCalledWith(
+         expect.stringContaining('"captureId":"capture-1"'),
+      );
+      expect(logger.log).toHaveBeenCalledWith(
+         expect.stringContaining('"correctionId":"correction-1"'),
+      );
+      expect(logger.debug).not.toHaveBeenCalled();
    });
 
    it('serializa null em masterAnswers quando a alternativa correta não for inteira válida', async () => {
@@ -257,6 +263,7 @@ describe('CorrectionOmrProcessor', () => {
       };
       const tx = {
          correctionQuestion: {
+            deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
             createMany: jest.fn().mockResolvedValue({ count: 1 }),
          },
          correctionCapture: {
@@ -292,10 +299,9 @@ describe('CorrectionOmrProcessor', () => {
          logger as never,
          { publish: jest.fn().mockResolvedValue(undefined) } as never,
          {
-            createLatestActiveCorrection: jest.fn().mockResolvedValue({
+            upsertOfficialCorrection: jest.fn().mockResolvedValue({
                correction: {
                   id: 'correction-1',
-                  attempt: 1,
                },
                replacedSessionIds: [],
                replacedCaptureArtifacts: [],
@@ -306,7 +312,9 @@ describe('CorrectionOmrProcessor', () => {
                .fn()
                .mockResolvedValue(undefined),
          } as never,
-         { refreshSessionMetrics: jest.fn().mockResolvedValue(undefined) } as never,
+         {
+            refreshSessionMetrics: jest.fn().mockResolvedValue(undefined),
+         } as never,
          {
             downloadFileAsBuffer: jest
                .fn()
@@ -381,7 +389,9 @@ describe('CorrectionOmrProcessor', () => {
          refreshSessionMetrics: jest.fn().mockResolvedValue(undefined),
       };
       const artifactCleanup = {
-         cleanupReplacedCaptureArtifacts: jest.fn().mockResolvedValue(undefined),
+         cleanupReplacedCaptureArtifacts: jest
+            .fn()
+            .mockResolvedValue(undefined),
       };
       const storage = {
          downloadFileAsBuffer: jest
@@ -408,7 +418,7 @@ describe('CorrectionOmrProcessor', () => {
          prisma as never,
          logger as never,
          publisher as never,
-         { createLatestActiveCorrection: jest.fn() } as never,
+         { upsertOfficialCorrection: jest.fn() } as never,
          artifactCleanup as never,
          metrics as never,
          storage as never,
@@ -455,13 +465,17 @@ describe('CorrectionOmrProcessor', () => {
          }),
       );
       expect(metrics.refreshSessionMetrics).toHaveBeenCalledWith('session-1');
-      expect(logger.debug).toHaveBeenCalledWith(
-         'correction_omr.capture_discarded',
-         expect.objectContaining({
+      expect(logger.log).toHaveBeenCalledWith(
+         JSON.stringify({
+            event: 'correction_omr.capture_discarded',
             captureId: 'capture-1',
+            sessionId: 'session-1',
             reason: 'registration_student_missing',
+            processingMs: 0,
+            message: 'Matrícula não encontrada na base para esta correção.',
          }),
       );
+      expect(logger.debug).not.toHaveBeenCalled();
    });
 
    it('descarta a captura quando o OMR não consegue ler a folha', async () => {
@@ -509,7 +523,9 @@ describe('CorrectionOmrProcessor', () => {
          refreshSessionMetrics: jest.fn().mockResolvedValue(undefined),
       };
       const artifactCleanup = {
-         cleanupReplacedCaptureArtifacts: jest.fn().mockResolvedValue(undefined),
+         cleanupReplacedCaptureArtifacts: jest
+            .fn()
+            .mockResolvedValue(undefined),
       };
       const storage = {
          downloadFileAsBuffer: jest
@@ -534,7 +550,7 @@ describe('CorrectionOmrProcessor', () => {
          prisma as never,
          logger as never,
          publisher as never,
-         { createLatestActiveCorrection: jest.fn() } as never,
+         { upsertOfficialCorrection: jest.fn() } as never,
          artifactCleanup as never,
          metrics as never,
          storage as never,
@@ -578,16 +594,20 @@ describe('CorrectionOmrProcessor', () => {
          }),
       );
       expect(metrics.refreshSessionMetrics).toHaveBeenCalledWith('session-1');
-      expect(logger.debug).toHaveBeenCalledWith(
-         'correction_omr.capture_discarded',
-         expect.objectContaining({
+      expect(logger.log).toHaveBeenCalledWith(
+         JSON.stringify({
+            event: 'correction_omr.capture_discarded',
             captureId: 'capture-1',
+            sessionId: 'session-1',
             reason: 'omr_unreadable',
+            processingMs: 0,
+            message: 'Nao foi possivel identificar as marcas fiduciais.',
          }),
       );
+      expect(logger.debug).not.toHaveBeenCalled();
    });
 
-   it('não emite debug quando tracing está desligado', async () => {
+   it('não emite debug durante o processamento', async () => {
       const prisma = {
          correctionCapture: {
             findUnique: jest.fn().mockResolvedValue(null),
@@ -597,7 +617,7 @@ describe('CorrectionOmrProcessor', () => {
          prisma as never,
          logger as never,
          { publish: jest.fn() } as never,
-         { createLatestActiveCorrection: jest.fn() } as never,
+         { upsertOfficialCorrection: jest.fn() } as never,
          { cleanupReplacedCaptureArtifacts: jest.fn() } as never,
          { refreshSessionMetrics: jest.fn() } as never,
          {
@@ -623,7 +643,6 @@ describe('CorrectionOmrProcessor', () => {
       } as never);
 
       expect(logger.debug).not.toHaveBeenCalled();
-      expect(logger.setLogLevels).not.toHaveBeenCalled();
    });
 
    it('usa o overlay como filePath ativo e limpa artefatos substituídos', async () => {
@@ -664,6 +683,7 @@ describe('CorrectionOmrProcessor', () => {
       };
       const tx = {
          correctionQuestion: {
+            deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
             createMany: jest.fn().mockResolvedValue({ count: 1 }),
          },
          correctionCapture: {
@@ -679,10 +699,9 @@ describe('CorrectionOmrProcessor', () => {
          publish: jest.fn().mockResolvedValue(undefined),
       };
       const correctionExamActivation = {
-         createLatestActiveCorrection: jest.fn().mockResolvedValue({
+         upsertOfficialCorrection: jest.fn().mockResolvedValue({
             correction: {
                id: 'correction-1',
-               attempt: 2,
             },
             replacedSessionIds: ['session-previous'],
             replacedCaptureArtifacts: [
@@ -698,7 +717,9 @@ describe('CorrectionOmrProcessor', () => {
          }),
       };
       const artifactCleanup = {
-         cleanupReplacedCaptureArtifacts: jest.fn().mockResolvedValue(undefined),
+         cleanupReplacedCaptureArtifacts: jest
+            .fn()
+            .mockResolvedValue(undefined),
       };
       const metrics = {
          refreshSessionMetrics: jest.fn().mockResolvedValue(undefined),
@@ -759,32 +780,33 @@ describe('CorrectionOmrProcessor', () => {
       } as never);
 
       expect(
-         correctionExamActivation.createLatestActiveCorrection,
+         correctionExamActivation.upsertOfficialCorrection,
       ).toHaveBeenCalledWith(
          tx,
          expect.objectContaining({
             filePath:
                'corrections/sessions/session-1/captures/capture-1/07_overlay_final.jpg',
+            preserveCaptureId: 'capture-1',
          }),
       );
-      expect(artifactCleanup.cleanupReplacedCaptureArtifacts).toHaveBeenCalledWith(
-         {
-            replacedCaptureArtifacts: [
-               {
-                  correctionExamId: 'correction-old',
-                  captureId: 'capture-old',
-                  sessionId: 'session-previous',
-                  originalImagePath: 'previous/original.jpg',
-                  rectifiedImagePath: null,
-                  overlayImagePath: 'previous/overlay.jpg',
-               },
-            ],
-            preservedPaths: [
-               'corrections/sessions/session-1/captures/capture-1/07_overlay_final.jpg',
-               undefined,
-            ],
-            source: 'correction_omr',
-         },
-      );
+      expect(
+         artifactCleanup.cleanupReplacedCaptureArtifacts,
+      ).toHaveBeenCalledWith({
+         replacedCaptureArtifacts: [
+            {
+               correctionExamId: 'correction-old',
+               captureId: 'capture-old',
+               sessionId: 'session-previous',
+               originalImagePath: 'previous/original.jpg',
+               rectifiedImagePath: null,
+               overlayImagePath: 'previous/overlay.jpg',
+            },
+         ],
+         preservedPaths: [
+            'corrections/sessions/session-1/captures/capture-1/07_overlay_final.jpg',
+            undefined,
+         ],
+         source: 'correction_omr',
+      });
    });
 });

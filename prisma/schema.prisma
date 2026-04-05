@@ -135,6 +135,18 @@ enum AuthAuditEventTypeEnum {
   logout
 }
 
+enum AppFeedbackCategoryEnum {
+  bug
+  suggestion
+  other
+}
+
+enum SupportTicketCategoryEnum {
+  bug
+  suggestion
+  other
+}
+
 model User {
   id            String   @id @default(uuid())
   createdAt     DateTime @default(now())
@@ -160,6 +172,8 @@ model User {
   Sessions    AuthSession[]
   AuditEvents AuthAuditEvent[]
   AuthInvites AuthInvite[]
+  Feedbacks   AppFeedback[]
+  SupportTickets SupportTicket[]
 }
 
 model UserProfile {
@@ -176,6 +190,7 @@ model UserProfile {
   locale   String
 
   notificationPrefsJson Json
+  appPrefsJson          Json @default("{}")
 
   onboardingCompletedAt DateTime?
 
@@ -183,6 +198,41 @@ model UserProfile {
   updatedAt DateTime @updatedAt
 
   @@index([phoneE164])
+}
+
+model AppFeedback {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  User   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  category     AppFeedbackCategoryEnum
+  channel      AuthChannelEnum
+  message      String
+  metadataJson Json?
+
+  @@index([userId, createdAt])
+  @@index([category])
+}
+
+model SupportTicket {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String
+  User   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  category     SupportTicketCategoryEnum
+  channel      AuthChannelEnum
+  contactPhone String
+  message      String
+  metadataJson Json?
+
+  @@index([userId, createdAt])
+  @@index([category])
 }
 
 model AuthInvite {
@@ -591,7 +641,6 @@ model CorrectionExam {
 
   datetime DateTime         @default(now())
   filePath String
-  attempt  Int              @default(1)
   score    Float?
   status   CorrectionStatus @default(pending)
   metadata Json?
@@ -608,7 +657,7 @@ model CorrectionExam {
   Items   CorrectionQuestion[]
   Capture CorrectionCapture?
 
-  @@unique([examId, studentId, attempt])
+  @@unique([examId, studentId])
   @@index([examId])
   @@index([studentId])
   @@index([gradedByAgentId])

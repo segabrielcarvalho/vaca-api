@@ -18,6 +18,7 @@ import { ResolveCorrectionCaptureInput } from '../inputs/resolve-correction-capt
 import { StartCorrectionSessionInput } from '../inputs/start-correction-session.input';
 import { SubmitCorrectionPhotoInput } from '../inputs/submit-correction-photo.input';
 import { CorrectionCaptureListObject } from '../objects/correction-capture-list.object';
+import { CorrectionDashboardObject } from '../objects/correction-dashboard.object';
 import { CorrectionCaptureReviewObject } from '../objects/correction-capture-review.object';
 import { CorrectionExamListObject } from '../objects/correction-exam-list.object';
 import { ExamPendingStudentCaptureListObject } from '../objects/exam-pending-student-capture-list.object';
@@ -26,6 +27,7 @@ import { CorrectionPublisherService } from '../services/correction-publisher.ser
 import { StartCorrectionSessionService } from '../services/create/start-correction-session.service';
 import { SubmitCorrectionPhotoService } from '../services/create/submit-correction-photo.service';
 import { ListCorrectionCapturesService } from '../services/get/list-correction-captures.service';
+import { GetCorrectionDashboardService } from '../services/get/get-correction-dashboard.service';
 import { GetCorrectionCaptureReviewService } from '../services/get/get-correction-capture-review.service';
 import { ListExamCorrectionSessionsService } from '../services/get/list-exam-correction-sessions.service';
 import { ListExamCorrectionsService } from '../services/get/list-exam-corrections.service';
@@ -67,6 +69,7 @@ export class CorrectionResolver {
       private readonly resolveCorrectionCaptureService: ResolveCorrectionCaptureService,
       private readonly requeueCorrectionCaptureService: RequeueCorrectionCaptureService,
       private readonly listCorrectionCapturesService: ListCorrectionCapturesService,
+      private readonly getCorrectionDashboardService: GetCorrectionDashboardService,
       private readonly getCorrectionCaptureReviewService: GetCorrectionCaptureReviewService,
       private readonly listExamCorrectionSessionsService: ListExamCorrectionSessionsService,
       private readonly listExamCorrectionsService: ListExamCorrectionsService,
@@ -171,6 +174,11 @@ export class CorrectionResolver {
       @CurrentUser() user: AuthCurrentUser,
    ) {
       return this.getCorrectionCaptureReviewService.run(captureId, user);
+   }
+
+   @Query(() => CorrectionDashboardObject)
+   async getCorrectionDashboard(@CurrentUser() user: AuthCurrentUser) {
+      return this.getCorrectionDashboardService.run(user);
    }
 
    @Subscription(() => CorrectionSessionEvent, {

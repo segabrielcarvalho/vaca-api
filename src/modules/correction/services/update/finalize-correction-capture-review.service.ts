@@ -68,6 +68,11 @@ export class FinalizeCorrectionCaptureReviewService {
             CorrectionExam: {
                include: {
                   Items: true,
+                  Capture: {
+                     select: {
+                        id: true,
+                     },
+                  },
                },
             },
             ReviewOverrides: true,
@@ -173,7 +178,11 @@ export class FinalizeCorrectionCaptureReviewService {
             if (
                input.outcome === CorrectionCaptureReviewOutcomeEnum.invalidated
             ) {
-               if (capture.correctionExamId) {
+               const captureOwnsOfficialCorrection =
+                  capture.correctionExamId != null &&
+                  capture.CorrectionExam?.Capture?.id === capture.id;
+
+               if (captureOwnsOfficialCorrection) {
                   await this.correctionExamActivation.deleteCorrectionResult(
                      tx,
                      capture.correctionExamId,
@@ -197,6 +206,17 @@ export class FinalizeCorrectionCaptureReviewService {
             } else if (
                input.outcome === CorrectionCaptureReviewOutcomeEnum.needs_review
             ) {
+               if (nextStudentId) {
+                  await this.correctionExamActivation.invalidateOtherPendingReviewCaptures(
+                     tx,
+                     {
+                        examId: capture.examId,
+                        studentId: nextStudentId,
+                        preserveCaptureId: capture.id,
+                     },
+                  );
+               }
+
                await tx.correctionCapture.update({
                   where: { id: capture.id },
                   data: {
@@ -211,75 +231,47 @@ export class FinalizeCorrectionCaptureReviewService {
                   },
                });
             } else {
-               let correctionExamId = capture.correctionExamId;
-
-               if (!correctionExamId) {
-                  const createdCorrection =
-                     await this.correctionExamActivation.createLatestActiveCorrection(
-                        tx,
-                        {
-                           examId: capture.examId,
-                           studentId: nextStudentId!,
-                           filePath:
-                              capture.overlayImagePath ??
-                              capture.originalImagePath,
-                           score: gradedResult.score,
-                           status: 'graded',
-                           gradedByAgentId: reviewedByAgentId,
-                           metadata: {
-                              source: 'manual_review',
-                              captureId: capture.id,
-                              effectiveQuestionCount:
-                                 gradedResult.effectiveQuestionCount,
-                              effectiveMaxScore: gradedResult.effectiveMaxScore,
-                              overrideCount: overrideSource.length,
-                           } satisfies Prisma.InputJsonValue,
-                        },
-                     );
-
-                  correctionExamId = createdCorrection.correction.id;
-                  createdCorrection.replacedSessionIds.forEach((sessionId) =>
-                     replacedSessionIds.add(sessionId),
-                  );
-                  replacedCaptureArtifacts.push(
-                     ...createdCorrection.replacedCaptureArtifacts,
-                  );
-               } else {
-                  const updatedCorrection =
-                     await this.correctionExamActivation.updateLatestActiveCorrection(
-                        tx,
-                        {
-                           correctionExamId,
-                           examId: capture.examId,
-                           studentId: nextStudentId!,
-                           filePath:
-                              capture.overlayImagePath ??
-                              capture.originalImagePath,
-                           score: gradedResult.score,
-                           status: 'graded',
-                           gradedByAgentId: reviewedByAgentId,
-                           metadata: {
-                              source: 'manual_review',
-                              captureId: capture.id,
-                              effectiveQuestionCount:
-                                 gradedResult.effectiveQuestionCount,
-                              effectiveMaxScore: gradedResult.effectiveMaxScore,
-                              overrideCount: overrideSource.length,
-                           } satisfies Prisma.InputJsonValue,
-                        },
-                     );
-
-                  updatedCorrection.replacedSessionIds.forEach((sessionId) =>
-                     replacedSessionIds.add(sessionId),
-                  );
-                  replacedCaptureArtifacts.push(
-                     ...updatedCorrection.replacedCaptureArtifacts,
+               const captureOwnsOfficialCorrection =
+                  capture.correctionExamId != null &&
+                  capture.CorrectionExam?.Capture?.id === capture.id;
+               const persistedCorrection =
+                  await this.correctionExamActivation.upsertOfficialCorrection(
+                     tx,
+                     {
+                        correctionExamId: captureOwnsOfficialCorrection
+                           ? (capture.correctionExamId ?? undefined)
+                           : undefined,
+                        examId: capture.examId,
+                        studentId: nextStudentId!,
+                        filePath:
+                           capture.overlayImagePath ??
+                           capture.originalImagePath,
+                        score: gradedResult.score,
+                        status: 'graded',
+                        gradedByAgentId: reviewedByAgentId,
+                        metadata: {
+                           source: 'manual_review',
+                           captureId: capture.id,
+                           effectiveQuestionCount:
+                              gradedResult.effectiveQuestionCount,
+                           effectiveMaxScore: gradedResult.effectiveMaxScore,
+                           overrideCount: overrideSource.length,
+                        } satisfies Prisma.InputJsonValue,
+                        preserveCaptureId: capture.id,
+                     },
                   );
 
-                  await tx.correctionQuestion.deleteMany({
-                     where: { correctionId: correctionExamId },
-                  });
-               }
+               const correctionExamId = persistedCorrection.correction.id;
+               persistedCorrection.replacedSessionIds.forEach((sessionId) =>
+                  replacedSessionIds.add(sessionId),
+               );
+               replacedCaptureArtifacts.push(
+                  ...persistedCorrection.replacedCaptureArtifacts,
+               );
+
+               await tx.correctionQuestion.deleteMany({
+                  where: { correctionId: correctionExamId },
+               });
 
                await tx.correctionQuestion.createMany({
                   data: gradedResult.correctionItems.map((item) => ({

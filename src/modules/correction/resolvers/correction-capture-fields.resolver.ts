@@ -36,7 +36,9 @@ export class CorrectionCaptureFieldsResolver {
       return normalized.length > 0 ? normalized : null;
    }
 
-   private async toSignedUrl(path: string | null | undefined): Promise<string | null> {
+   private async toSignedUrl(
+      path: string | null | undefined,
+   ): Promise<string | null> {
       const normalizedPath = this.normalizePath(path);
       if (!normalizedPath) {
          return null;

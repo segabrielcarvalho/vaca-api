@@ -1,7 +1,6 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import type { Queue } from 'bullmq';
-import type { ConfigType } from '@nestjs/config';
 import { AuthCurrentUser } from '../../../auth/services/auth-context.service';
 import { MyLogger } from '../../../logger/my-logger.service';
 import { ScopedAccessService } from '../../../auth/services/shared/scoped-access.service';
@@ -9,7 +8,6 @@ import { QUEUES } from '../../../queue/constants/queue.constants';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { STORAGE_PROVIDER } from '../../../storage/providers';
 import type IS3Provider from '../../../storage/providers/s3/s3.interface';
-import correctionConfig from '../../config/correction.config';
 import { CorrectionEventStageEnum } from '../../enums/correction-event-stage.enum';
 import { SubmitCorrectionPhotoInput } from '../../inputs/submit-correction-photo.input';
 import { CorrectionJobPayload } from '../../objects/correction-job-payload.object';
@@ -44,21 +42,10 @@ export class SubmitCorrectionPhotoService {
       private readonly storage: IS3Provider,
       @InjectQueue(QUEUES.CORRECTION_OMR)
       private readonly correctionQueue: Queue<CorrectionJobPayload>,
-      @Inject(correctionConfig.KEY)
-      private readonly config: ConfigType<typeof correctionConfig>,
    ) {}
 
    async run(input: SubmitCorrectionPhotoInput, user: AuthCurrentUser) {
       this.logger.setContext(SubmitCorrectionPhotoService.name);
-      if (this.config.debugTrace) {
-         this.logger.setLogLevels(['log', 'error', 'warn', 'debug', 'verbose']);
-      }
-      this.operationalLog('submit_correction_photo.accepted', {
-         userId: user.id,
-         sessionId: input.sessionId,
-         hasPhotoBase64: Boolean(input.photoBase64),
-         hasPhotoFile: Boolean(input.photoFile),
-      });
       this.trace('submit_correction_photo.received', {
          userId: user.id,
          sessionId: input.sessionId,
@@ -140,13 +127,6 @@ export class SubmitCorrectionPhotoService {
          threshold,
          delta,
       });
-      this.operationalLog('submit_correction_photo.capture_created', {
-         captureId: capture.id,
-         sessionId: session.id,
-         examId: session.examId,
-         threshold,
-         delta,
-      });
 
       const queueJob = await this.correctionQueue.add(
          'omr-process',
@@ -173,12 +153,6 @@ export class SubmitCorrectionPhotoService {
          examId: session.examId,
          queueJobId: queueJob.id,
       });
-      this.operationalLog('submit_correction_photo.job_enqueued', {
-         captureId: capture.id,
-         sessionId: session.id,
-         examId: session.examId,
-         queueJobId: queueJob.id,
-      });
 
       await this.publisher.publish({
          sessionId: session.id,
@@ -195,6 +169,14 @@ export class SubmitCorrectionPhotoService {
          captureId: capture.id,
          sessionId: session.id,
          stage: CorrectionEventStageEnum.CAPTURE_QUEUED,
+      });
+
+      this.operationalLog('submit_correction_photo.submitted', {
+         userId: user.id,
+         sessionId: session.id,
+         examId: session.examId,
+         captureId: capture.id,
+         queueJobId: queueJob.id,
       });
 
       await this.metrics.refreshSessionMetrics(session.id);
@@ -308,8 +290,8 @@ export class SubmitCorrectionPhotoService {
    }
 
    private trace(event: string, meta?: Record<string, unknown>) {
-      if (!this.config.debugTrace) return;
-      this.logger.debug(event, JSON.parse(JSON.stringify(meta ?? null)) as any);
+      void event;
+      void meta;
    }
 
    private operationalLog(event: string, meta?: Record<string, unknown>) {

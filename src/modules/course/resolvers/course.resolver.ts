@@ -33,13 +33,19 @@ export class CourseResolver {
    ) {}
 
    @Query(() => CourseListObject)
-   async listCourses(@Args() args: FindManyCourseArgs) {
-      return this.listCoursesService.run(args);
+   async listCourses(
+      @CurrentUser() user: AuthCurrentUser,
+      @Args() args: FindManyCourseArgs,
+   ) {
+      return this.listCoursesService.run(args, user);
    }
 
    @Query(() => Course)
-   async getCourse(@Args() args: FindUniqueCourseArgs) {
-      return this.getCourseService.run(args);
+   async getCourse(
+      @CurrentUser() user: AuthCurrentUser,
+      @Args() args: FindUniqueCourseArgs,
+   ) {
+      return this.getCourseService.run(args, user);
    }
 
    @ScopedAuthorized({

@@ -27,7 +27,9 @@ describe('CorrectionCaptureFieldsResolver', () => {
    });
 
    it('deve assinar caminhos relativos para os artefatos da captura', async () => {
-      getUrlService.run.mockResolvedValue('https://signed.example.com/capture.jpg');
+      getUrlService.run.mockResolvedValue(
+         'https://signed.example.com/capture.jpg',
+      );
 
       await expect(
          resolver.resolveOverlayImagePath({
@@ -35,7 +37,11 @@ describe('CorrectionCaptureFieldsResolver', () => {
          }),
       ).resolves.toBe('https://signed.example.com/capture.jpg');
 
-      expect(getUrlService.run).toHaveBeenCalledWith('captures/overlay.jpg', 600, true);
+      expect(getUrlService.run).toHaveBeenCalledWith(
+         'captures/overlay.jpg',
+         600,
+         true,
+      );
    });
 
    it('deve retornar null para caminhos vazios ou ausentes', async () => {

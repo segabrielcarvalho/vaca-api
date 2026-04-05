@@ -3,9 +3,57 @@ import { AuthChannelEnum } from '../../graphql/@generated/prisma/auth-channel.en
 import { User } from '../../graphql/@generated/user/user.model';
 
 @ObjectType()
+export class AuthProfilePreferences {
+   @Field()
+   scannerSoundEnabled!: boolean;
+
+   @Field()
+   scannerVibrationEnabled!: boolean;
+}
+
+@ObjectType()
+export class AuthLegalLinks {
+   @Field({ nullable: true })
+   termsUrl?: string;
+
+   @Field({ nullable: true })
+   privacyUrl?: string;
+}
+
+@ObjectType()
+export class AuthSupportInfo {
+   @Field()
+   emergencyWhatsappNumber!: string;
+
+   @Field()
+   emergencyWhatsappUrl!: string;
+}
+
+@ObjectType()
+export class AuthCurrentSchool {
+   @Field(() => ID)
+   id!: string;
+
+   @Field()
+   name!: string;
+}
+
+@ObjectType()
 export class AuthMe extends User {
    @Field({ nullable: true })
    photoUrl?: string;
+
+   @Field(() => AuthProfilePreferences)
+   preferences!: AuthProfilePreferences;
+
+   @Field(() => AuthLegalLinks)
+   legalLinks!: AuthLegalLinks;
+
+   @Field(() => AuthSupportInfo)
+   support!: AuthSupportInfo;
+
+   @Field(() => AuthCurrentSchool, { nullable: true })
+   currentSchool?: AuthCurrentSchool | null;
 }
 
 @ObjectType()

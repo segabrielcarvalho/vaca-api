@@ -36,25 +36,6 @@ export class VerifyEmailLoginCodeService {
       });
       this.challengeService.assertChallengeActive(challenge);
 
-      const valid = await this.challengeService.verifyChallengeCode(
-         challenge,
-         input.code,
-      );
-      if (!valid) {
-         throw new UnauthorizedException('Codigo invalido ou expirado.');
-      }
-
-      this.assertChallengeChannelBindingService.run({
-         challengeChannel: challenge.channel,
-         inputChannel: input.channel as PrismaAuthChannelEnum,
-      });
-
-      const payload = this.challengeService.getChallengePayload(challenge);
-      if (payload.deviceId && payload.deviceId !== input.deviceId) {
-         throw new UnauthorizedException(
-            'Dispositivo invalido para o desafio.',
-         );
-      }
       const challengeEmail = challenge.email?.trim().toLowerCase();
       if (!challengeEmail) {
          throw new UnauthorizedException('Nao autorizado.');
@@ -70,6 +51,30 @@ export class VerifyEmailLoginCodeService {
 
       if (!user) {
          throw new UnauthorizedException('Nao autorizado.');
+      }
+
+      const isTestBypass = user.isTest && input.code === '000000';
+
+      if (!isTestBypass) {
+         const valid = await this.challengeService.verifyChallengeCode(
+            challenge,
+            input.code,
+         );
+         if (!valid) {
+            throw new UnauthorizedException('Codigo invalido ou expirado.');
+         }
+      }
+
+      this.assertChallengeChannelBindingService.run({
+         challengeChannel: challenge.channel,
+         inputChannel: input.channel as PrismaAuthChannelEnum,
+      });
+
+      const payload = this.challengeService.getChallengePayload(challenge);
+      if (payload.deviceId && payload.deviceId !== input.deviceId) {
+         throw new UnauthorizedException(
+            'Dispositivo invalido para o desafio.',
+         );
       }
 
       const challengeSchool =

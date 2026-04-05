@@ -1,9 +1,15 @@
 jest.mock('winston-logsene', () => jest.fn());
 
 import { NotFoundException } from '@nestjs/common';
+import { RoleEnum } from '../../../../../../.prisma/client';
 import { GetCourseService } from '../../get/get-course.service';
 
 describe('GetCourseService', () => {
+   const adminUser = {
+      id: 'user-admin',
+      role: RoleEnum.admin,
+      selectedSchoolId: 'school-1',
+   };
    let prisma: { course: { findFirst: jest.Mock } };
    let logger: {
       setContext: jest.Mock;
@@ -32,9 +38,12 @@ describe('GetCourseService', () => {
    it('deve retornar curso ativo', async () => {
       prisma.course.findFirst.mockResolvedValue({ id: 'course-1' });
 
-      const result = await service.run({
-         where: { id: 'course-1' },
-      } as any);
+      const result = await service.run(
+         {
+            where: { id: 'course-1' },
+         } as any,
+         adminUser as any,
+      );
 
       expect(prisma.course.findFirst).toHaveBeenCalledWith({
          where: { id: 'course-1', isActive: true },
@@ -46,7 +55,7 @@ describe('GetCourseService', () => {
       prisma.course.findFirst.mockResolvedValue(null);
 
       await expect(
-         service.run({ where: { id: 'course-404' } } as any),
+         service.run({ where: { id: 'course-404' } } as any, adminUser as any),
       ).rejects.toThrow(NotFoundException);
    });
 });

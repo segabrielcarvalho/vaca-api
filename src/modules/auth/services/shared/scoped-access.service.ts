@@ -18,23 +18,42 @@ type PermissionDecision = 'allow' | 'deny' | null;
 export class ScopedAccessService {
    constructor(private readonly prisma: PrismaService) {}
 
+   async hasPermission(input: {
+      user: AuthCurrentUser;
+      permissionCode: string;
+      scopeType: AclScopeType;
+      scopeId: string;
+   }): Promise<boolean> {
+      const { user, permissionCode, scopeType, scopeId } = input;
+
+      if (user.role === RoleEnum.admin) return true;
+      if (!user.selectedSchoolId) return false;
+
+      const targets = await this.resolveScopeTargets(scopeType, scopeId);
+      const schoolTarget = targets.find(
+         (target) => target.scopeType === AclScopeType.school,
+      );
+
+      if (!schoolTarget || schoolTarget.scopeId !== user.selectedSchoolId) {
+         return false;
+      }
+
+      const agentId = await this.getAgentIdByUserId(user.id);
+
+      return this.hasPermissionForTargets({
+         agentId,
+         permissionCode,
+         targets,
+      });
+   }
+
    async assertPermission(input: {
       user: AuthCurrentUser;
       permissionCode: string;
       scopeType: AclScopeType;
       scopeId: string;
    }): Promise<void> {
-      const { user, permissionCode, scopeType, scopeId } = input;
-
-      if (user.role === RoleEnum.admin) return;
-
-      const agentId = await this.getAgentIdByUserId(user.id);
-      const hasPermission = await this.hasPermissionForScope({
-         agentId,
-         permissionCode,
-         scopeType,
-         scopeId,
-      });
+      const hasPermission = await this.hasPermission(input);
 
       if (!hasPermission) {
          throw new ForbiddenException('Acesso negado');
@@ -52,6 +71,10 @@ export class ScopedAccessService {
       if (user.role === RoleEnum.admin) return;
 
       const permissionCode = `${scopeType}.membership.manage`;
+      if (!(await this.belongsToSelectedSchool(scopeType, scopeId, user))) {
+         throw new ForbiddenException('Acesso negado');
+      }
+
       const agentId = await this.getAgentIdByUserId(user.id);
 
       const canManage = await this.hasPermissionForScope({
@@ -81,6 +104,9 @@ export class ScopedAccessService {
    }): Promise<void> {
       const { user, scopeType, scopeId } = input;
       if (user.role === RoleEnum.admin) return;
+      if (!(await this.belongsToSelectedSchool(scopeType, scopeId, user))) {
+         throw new ForbiddenException('Acesso negado');
+      }
 
       const permissionCode = `${scopeType}.membership.manage`;
       const agentId = await this.getAgentIdByUserId(user.id);
@@ -120,7 +146,19 @@ export class ScopedAccessService {
          input.scopeId,
       );
 
-      for (const target of targets) {
+      return this.hasPermissionForTargets({
+         agentId: input.agentId,
+         permissionCode: input.permissionCode,
+         targets,
+      });
+   }
+
+   private async hasPermissionForTargets(input: {
+      agentId: string;
+      permissionCode: string;
+      targets: ScopeTarget[];
+   }): Promise<boolean> {
+      for (const target of input.targets) {
          const decision = await this.getPermissionDecisionAtTarget({
             agentId: input.agentId,
             permissionCode: input.permissionCode,
@@ -131,6 +169,23 @@ export class ScopedAccessService {
       }
 
       return false;
+   }
+
+   private async belongsToSelectedSchool(
+      scopeType: AclScopeType,
+      scopeId: string,
+      user: AuthCurrentUser,
+   ): Promise<boolean> {
+      if (!user.selectedSchoolId) {
+         return false;
+      }
+
+      const targets = await this.resolveScopeTargets(scopeType, scopeId);
+      const schoolTarget = targets.find(
+         (target) => target.scopeType === AclScopeType.school,
+      );
+
+      return schoolTarget?.scopeId === user.selectedSchoolId;
    }
 
    private async getMaxRoleRankForScope(input: {

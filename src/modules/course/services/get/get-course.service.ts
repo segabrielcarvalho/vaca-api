@@ -1,4 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { RoleEnum } from '../../../../../.prisma/client';
+import { AuthCurrentUser } from '../../../auth/services/auth-context.service';
 import { FindUniqueCourseArgs } from '../../../graphql/@generated/course/find-unique-course.args';
 import { MyLogger } from '../../../logger/my-logger.service';
 import { PrismaService } from '../../../prisma/prisma.service';
@@ -14,13 +16,16 @@ export class GetCourseService {
       this.logger.setContext(GetCourseService.name);
    }
 
-   async run(args: FindUniqueCourseArgs) {
+   async run(args: FindUniqueCourseArgs, user: AuthCurrentUser) {
       const id = this.rules.extractCourseId(args.where);
 
       const course = await this.prisma.course.findFirst({
          where: {
             id,
             isActive: true,
+            ...(user.role === RoleEnum.admin
+               ? {}
+               : { schoolId: user.selectedSchoolId }),
          },
       });
 

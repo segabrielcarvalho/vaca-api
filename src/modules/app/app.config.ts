@@ -11,6 +11,10 @@ const appConfig = registerAs('app', () => {
    const baseApiUrl = process.env.BASE_API_URL || '';
    const baseWebUrl = process.env.BASE_WEB_URL || '';
    const baseAdminUrl = process.env.BASE_ADMIN_URL || '';
+   const legalTermsUrl = process.env.APP_LEGAL_TERMS_URL?.trim() || '';
+   const legalPrivacyUrl = process.env.APP_LEGAL_PRIVACY_URL?.trim() || '';
+   const supportEmergencyWhatsappNumber =
+      process.env.APP_SUPPORT_EMERGENCY_WHATSAPP_NUMBER?.trim() || '';
    const apolloGraphRef = process.env.APOLLO_GRAPH_REF || '';
    return {
       port,
@@ -18,6 +22,9 @@ const appConfig = registerAs('app', () => {
       baseApiUrl,
       baseWebUrl,
       baseAdminUrl,
+      legalTermsUrl,
+      legalPrivacyUrl,
+      supportEmergencyWhatsappNumber,
       apolloGraphRef,
       graphqlMaxDepth: toInt(process.env.GRAPHQL_MAX_DEPTH, 8),
       graphqlMaxComplexity: toInt(process.env.GRAPHQL_MAX_COMPLEXITY, 200),
@@ -40,6 +47,11 @@ export const appConfigValidation = z.object({
    BASE_API_URL: z.string().url(),
    BASE_WEB_URL: z.string().url(),
    BASE_ADMIN_URL: z.string().url(),
+   APP_LEGAL_TERMS_URL: z.union([z.string().url(), z.literal('')]).default(''),
+   APP_LEGAL_PRIVACY_URL: z
+      .union([z.string().url(), z.literal('')])
+      .default(''),
+   APP_SUPPORT_EMERGENCY_WHATSAPP_NUMBER: z.string().default(''),
    APOLLO_GRAPH_REF: z.string().optional().default(''),
    NODE_ENV: z
       .enum(['development', 'production', 'test'])

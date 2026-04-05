@@ -7,6 +7,7 @@ import { LoggerModule } from '../logger/logger.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { QueueModule } from '../queue/queue.module';
 import { StorageModule } from '../storage/storage.module';
+import appConfig from '../app/app.config';
 import authConfig from './auth.config';
 import { GqlAuthGuard } from './guards/gql-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
@@ -24,7 +25,14 @@ import {
    StartEmailLoginService,
    VerifyEmailLoginCodeService,
 } from './services/access';
-import { MeService, MySessionsService } from './services/account';
+import {
+   MeService,
+   MySessionsService,
+   SubmitMyFeedbackService,
+   SubmitMySupportTicketService,
+   UpdateMyProfilePreferencesService,
+   UpdateMyProfileService,
+} from './services/account';
 import { AuthCleanupService } from './services/auth-cleanup.service';
 import { AuthContextService } from './services/auth-context.service';
 import {
@@ -52,9 +60,13 @@ import {
 
 @Module({
    imports: [
+      ConfigModule.forFeature(appConfig),
       ConfigModule.forFeature(authConfig),
       JwtModule.registerAsync({
-         imports: [ConfigModule.forFeature(authConfig)],
+         imports: [
+            ConfigModule.forFeature(appConfig),
+            ConfigModule.forFeature(authConfig),
+         ],
          inject: [authConfig.KEY],
          useFactory: (config: ConfigType<typeof authConfig>) => ({
             secret: config.jwt.accessSecret,
@@ -93,6 +105,10 @@ import {
       LogoutCurrentSessionService,
       MeService,
       MySessionsService,
+      UpdateMyProfileService,
+      UpdateMyProfilePreferencesService,
+      SubmitMyFeedbackService,
+      SubmitMySupportTicketService,
       AuthSessionTransportResolverHelper,
       AuthInviteResolver,
       AuthAccessResolver,

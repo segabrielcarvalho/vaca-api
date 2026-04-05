@@ -34,13 +34,19 @@ export class SchoolResolver {
    ) {}
 
    @Query(() => SchoolListObject)
-   async listSchools(@Args() args: FindManySchoolArgs) {
-      return this.listSchoolsService.run(args);
+   async listSchools(
+      @CurrentUser() user: AuthCurrentUser,
+      @Args() args: FindManySchoolArgs,
+   ) {
+      return this.listSchoolsService.run(args, user);
    }
 
    @Query(() => School)
-   async getSchool(@Args() args: FindUniqueSchoolArgs) {
-      return this.getSchoolService.run(args);
+   async getSchool(
+      @CurrentUser() user: AuthCurrentUser,
+      @Args() args: FindUniqueSchoolArgs,
+   ) {
+      return this.getSchoolService.run(args, user);
    }
 
    @ScopedAuthorized({

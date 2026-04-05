@@ -62,21 +62,11 @@ export class CorrectionOmrProcessor extends WorkerHost {
    ) {
       super();
       this.logger.setContext(CorrectionOmrProcessor.name);
-      if (this.config.debugTrace) {
-         this.logger.setLogLevels(['log', 'error', 'warn', 'debug', 'verbose']);
-      }
    }
 
    async process(job: Job<CorrectionJobPayload>): Promise<void> {
       const startedAtMs = Date.now();
       const { captureId, sessionId, threshold, delta } = job.data;
-      this.operationalLog('correction_omr.job_started', {
-         jobId: job.id,
-         captureId,
-         sessionId,
-         threshold,
-         delta,
-      });
       this.trace('correction_omr.job_started', {
          jobId: job.id,
          captureId,
@@ -148,17 +138,12 @@ export class CorrectionOmrProcessor extends WorkerHost {
          sessionId,
          queueLatencyMs,
       });
-      this.operationalLog('correction_omr.capture_processing', {
-         jobId: job.id,
-         captureId,
-         sessionId,
-         queueLatencyMs,
-      });
 
       if (!capture.Exam.TemplateVersion) {
          await this.markNeedsReview({
             captureId,
             sessionId,
+            examId: capture.examId,
             startedAtMs,
             reason: CorrectionCaptureReviewReason.omr_error,
             errorMessage: 'A prova não possui template versionado associado.',
@@ -234,19 +219,6 @@ export class CorrectionOmrProcessor extends WorkerHost {
 
             omrResponse = (await response.json()) as OmrProcessResponse;
             this.trace('correction_omr.omr_response_received', {
-               jobId: job.id,
-               captureId,
-               sessionId,
-               success: omrResponse.success ?? false,
-               engineVersion: omrResponse.engineVersion ?? 'unknown',
-               registrationStatus: omrResponse.registration?.status ?? null,
-               answersCount: Array.isArray(omrResponse.answers)
-                  ? omrResponse.answers.length
-                  : Array.isArray(omrResponse.answers_numeric)
-                    ? omrResponse.answers_numeric.length
-                  : 0,
-            });
-            this.operationalLog('correction_omr.omr_response_received', {
                jobId: job.id,
                captureId,
                sessionId,
@@ -388,13 +360,15 @@ export class CorrectionOmrProcessor extends WorkerHost {
             sessionId,
             questionCount: capture.Exam.Questions.length,
             hasAmbiguity: answers.hasAmbiguity,
-            answeredCount: answers.values.filter((value) => value !== null).length,
+            answeredCount: answers.values.filter((value) => value !== null)
+               .length,
          });
 
          if (answers.hasAmbiguity) {
             await this.markNeedsReview({
                captureId,
                sessionId,
+               examId: capture.examId,
                startedAtMs,
                reason: CorrectionCaptureReviewReason.answer_ambiguous,
                errorMessage: 'Folha com ambiguidades de marcação.',
@@ -468,13 +442,12 @@ export class CorrectionOmrProcessor extends WorkerHost {
                   studentId: student.id,
                });
                const createdCorrection =
-                  await this.correctionExamActivation.createLatestActiveCorrection(
+                  await this.correctionExamActivation.upsertOfficialCorrection(
                      tx,
                      {
                         examId: capture.examId,
                         studentId: student.id,
-                        filePath:
-                           overlayImagePath ?? capture.originalImagePath,
+                        filePath: overlayImagePath ?? capture.originalImagePath,
                         score,
                         status: 'graded',
                         metadata: {
@@ -483,6 +456,7 @@ export class CorrectionOmrProcessor extends WorkerHost {
                            omrEngineVersion:
                               omrResponse.engineVersion ?? 'unknown',
                         } as Prisma.InputJsonValue,
+                        preserveCaptureId: capture.id,
                      },
                   );
                this.trace('correction_omr.correction_exam_upserted', {
@@ -490,8 +464,11 @@ export class CorrectionOmrProcessor extends WorkerHost {
                   captureId,
                   sessionId,
                   correctionId: createdCorrection.correction.id,
-                  attempt: createdCorrection.correction.attempt,
                   replacedSessionIds: createdCorrection.replacedSessionIds,
+               });
+
+               await tx.correctionQuestion.deleteMany({
+                  where: { correctionId: createdCorrection.correction.id },
                });
 
                await tx.correctionQuestion.createMany({
@@ -550,7 +527,6 @@ export class CorrectionOmrProcessor extends WorkerHost {
             correctAnswersCount,
             questionCount: capture.Exam.Questions.length,
             score,
-            attempt: correctionResult.correction.attempt,
             processingMs,
          });
          this.operationalLog('correction_omr.capture_graded', {
@@ -561,7 +537,6 @@ export class CorrectionOmrProcessor extends WorkerHost {
             correctAnswersCount,
             questionCount: capture.Exam.Questions.length,
             score,
-            attempt: correctionResult.correction.attempt,
             processingMs,
          });
 
@@ -585,7 +560,6 @@ export class CorrectionOmrProcessor extends WorkerHost {
                correctAnswersCount,
                questionCount: capture.Exam.Questions.length,
                score,
-               attempt: correctionResult.correction.attempt,
                registrationNumber,
             },
          });
@@ -674,6 +648,7 @@ export class CorrectionOmrProcessor extends WorkerHost {
    private async markNeedsReview(input: {
       captureId: string;
       sessionId: string;
+      examId: string;
       startedAtMs: number;
       reason: CorrectionCaptureReviewReason;
       errorMessage: string;
@@ -695,21 +670,34 @@ export class CorrectionOmrProcessor extends WorkerHost {
          studentId: input.studentId ?? null,
       });
 
-      await this.prisma.correctionCapture.update({
-         where: { id: input.captureId },
-         data: {
-            status: 'needs_review',
-            reviewReasons: [input.reason],
-            errorMessage: input.errorMessage,
-            processingMs,
-            rectifiedImagePath: input.rectifiedImagePath,
-            overlayImagePath: input.overlayImagePath,
-            detectionPayload: input.detectionPayload,
-            omrPayload: input.omrPayload,
-            registrationNumber: input.registrationNumber,
-            studentId: input.studentId,
-            engineVersion: input.engineVersion,
-         },
+      await this.prisma.$transaction(async (tx) => {
+         if (input.studentId) {
+            await this.correctionExamActivation.invalidateOtherPendingReviewCaptures(
+               tx,
+               {
+                  examId: input.examId,
+                  studentId: input.studentId,
+                  preserveCaptureId: input.captureId,
+               },
+            );
+         }
+
+         await tx.correctionCapture.update({
+            where: { id: input.captureId },
+            data: {
+               status: 'needs_review',
+               reviewReasons: [input.reason],
+               errorMessage: input.errorMessage,
+               processingMs,
+               rectifiedImagePath: input.rectifiedImagePath,
+               overlayImagePath: input.overlayImagePath,
+               detectionPayload: input.detectionPayload,
+               omrPayload: input.omrPayload,
+               registrationNumber: input.registrationNumber,
+               studentId: input.studentId,
+               engineVersion: input.engineVersion,
+            },
+         });
       });
       this.trace('correction_omr.mark_needs_review_capture_updated', {
          captureId: input.captureId,
@@ -797,16 +785,18 @@ export class CorrectionOmrProcessor extends WorkerHost {
       this.trace('correction_omr.discard_capture_artifacts_deleted', {
          captureId: input.captureId,
          sessionId: input.sessionId,
-         artifactDeletionResults: artifactDeletionResults.map((result, index) => ({
-            path: artifactPaths[index],
-            status: result.status,
-            reason:
-               result.status === 'rejected'
-                  ? result.reason instanceof Error
-                     ? result.reason.message
-                     : String(result.reason)
-                  : null,
-         })),
+         artifactDeletionResults: artifactDeletionResults.map(
+            (result, index) => ({
+               path: artifactPaths[index],
+               status: result.status,
+               reason:
+                  result.status === 'rejected'
+                     ? result.reason instanceof Error
+                        ? result.reason.message
+                        : String(result.reason)
+                     : null,
+            }),
+         ),
       });
 
       await this.prisma.$transaction(async (tx) => {
@@ -976,11 +966,14 @@ export class CorrectionOmrProcessor extends WorkerHost {
             originalImagePath: input.originalImagePath,
          });
       } catch {
-         this.trace('correction_omr.original_delete_failed_after_overlay_save', {
-            captureId: input.captureId,
-            sessionId: input.sessionId,
-            originalImagePath: input.originalImagePath,
-         });
+         this.trace(
+            'correction_omr.original_delete_failed_after_overlay_save',
+            {
+               captureId: input.captureId,
+               sessionId: input.sessionId,
+               originalImagePath: input.originalImagePath,
+            },
+         );
          // ignore cleanup failures to avoid breaking the correction flow
       }
 
@@ -1022,8 +1015,8 @@ export class CorrectionOmrProcessor extends WorkerHost {
    }
 
    private trace(event: string, meta?: Record<string, unknown>) {
-      if (!this.config.debugTrace) return;
-      this.logger.debug(event, JSON.parse(JSON.stringify(meta ?? null)) as any);
+      void event;
+      void meta;
    }
 
    private operationalLog(event: string, meta?: Record<string, unknown>) {

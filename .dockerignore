@@ -97,6 +97,7 @@ docker-compose*
 # Documentation
 README.md
 *.md
+!docs/**/*.md
 
 # Test files
 test/

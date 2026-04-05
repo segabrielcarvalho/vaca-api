@@ -1,4 +1,4 @@
-import { Field, Float, Int, ObjectType } from '@nestjs/graphql';
+import { Field, Float, ObjectType } from '@nestjs/graphql';
 
 @ObjectType()
 export class StudentDetailExamObject {
@@ -22,9 +22,6 @@ export class StudentDetailExamObject {
 
    @Field()
    isActive!: boolean;
-
-   @Field(() => Int)
-   attemptCount!: number;
 
    @Field(() => Float, { nullable: true })
    bestScore?: number | null;

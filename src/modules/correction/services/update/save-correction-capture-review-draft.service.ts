@@ -9,6 +9,7 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { SaveCorrectionCaptureReviewDraftInput } from '../../inputs/save-correction-capture-review-draft.input';
 import { GetCorrectionCaptureReviewService } from '../get/get-correction-capture-review.service';
 import { CorrectionAccessService } from '../shared/correction-access.service';
+import { CorrectionExamActivationService } from '../shared/correction-exam-activation.service';
 
 @Injectable()
 export class SaveCorrectionCaptureReviewDraftService {
@@ -16,10 +17,14 @@ export class SaveCorrectionCaptureReviewDraftService {
       private readonly prisma: PrismaService,
       private readonly access: CorrectionAccessService,
       private readonly scopedAccessService: ScopedAccessService,
+      private readonly correctionExamActivation: CorrectionExamActivationService,
       private readonly getReview: GetCorrectionCaptureReviewService,
    ) {}
 
-   async run(input: SaveCorrectionCaptureReviewDraftInput, user: AuthCurrentUser) {
+   async run(
+      input: SaveCorrectionCaptureReviewDraftInput,
+      user: AuthCurrentUser,
+   ) {
       const captureRef = await this.access.assertCapturePermission(
          input.captureId,
          user,
@@ -27,12 +32,26 @@ export class SaveCorrectionCaptureReviewDraftService {
       );
       const reviewedByAgentId =
          await this.scopedAccessService.getAgentIdByUserId(user.id);
-      const student = await this.resolveStudent(input.studentId, captureRef.Exam.klassId);
+      const student = await this.resolveStudent(
+         input.studentId,
+         captureRef.Exam.klassId,
+      );
       const normalizedOverrides = this.normalizeQuestionOverrides(
          input.questionOverrides,
       );
 
       await this.prisma.$transaction(async (tx) => {
+         if (student?.id) {
+            await this.correctionExamActivation.invalidateOtherPendingReviewCaptures(
+               tx,
+               {
+                  examId: captureRef.examId,
+                  studentId: student.id,
+                  preserveCaptureId: captureRef.id,
+               },
+            );
+         }
+
          await tx.correctionCapture.update({
             where: { id: captureRef.id },
             data: {
@@ -49,7 +68,9 @@ export class SaveCorrectionCaptureReviewDraftService {
          });
 
          if (input.questionOverrides) {
-            const questionIds = normalizedOverrides.map((item) => item.questionId);
+            const questionIds = normalizedOverrides.map(
+               (item) => item.questionId,
+            );
 
             await tx.correctionCaptureReviewOverride.deleteMany({
                where: {
@@ -108,7 +129,10 @@ export class SaveCorrectionCaptureReviewDraftService {
       return this.getReview.runById(captureRef.id);
    }
 
-   private async resolveStudent(studentId: string | undefined, klassId: string) {
+   private async resolveStudent(
+      studentId: string | undefined,
+      klassId: string,
+   ) {
       if (!studentId) {
          return null;
       }
@@ -157,7 +181,8 @@ export class SaveCorrectionCaptureReviewDraftService {
             const note = item.note?.trim() || null;
             const shouldPersist =
                item.selectedAlternatives !== undefined ||
-               gradingOverride !== CorrectionCaptureQuestionGradingOverride.auto ||
+               gradingOverride !==
+                  CorrectionCaptureQuestionGradingOverride.auto ||
                Boolean(reason) ||
                Boolean(note);
 

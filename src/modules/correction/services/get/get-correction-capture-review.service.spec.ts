@@ -12,6 +12,9 @@ describe('GetCorrectionCaptureReviewService', () => {
       correctionCapture: {
          findUnique: jest.Mock;
       };
+      correctionExam: {
+         findFirst: jest.Mock;
+      };
    };
    let getUrlService: { run: jest.Mock };
    let grading: { buildQuestionStates: jest.Mock };
@@ -24,6 +27,9 @@ describe('GetCorrectionCaptureReviewService', () => {
       prisma = {
          correctionCapture: {
             findUnique: jest.fn(),
+         },
+         correctionExam: {
+            findFirst: jest.fn(),
          },
       };
       getUrlService = {
@@ -61,7 +67,9 @@ describe('GetCorrectionCaptureReviewService', () => {
             overlayImagePath: 'overlay/file.jpg',
          }),
       );
-      getUrlService.run.mockResolvedValue('http://localhost:4566/ad-fusion/overlay/file.jpg');
+      getUrlService.run.mockResolvedValue(
+         'http://localhost:4566/ad-fusion/overlay/file.jpg',
+      );
 
       const result = await service.runById('capture-1');
 
@@ -82,7 +90,9 @@ describe('GetCorrectionCaptureReviewService', () => {
             overlayImagePath: null,
          }),
       );
-      getUrlService.run.mockResolvedValue('http://localhost:4566/ad-fusion/original/file.jpg');
+      getUrlService.run.mockResolvedValue(
+         'http://localhost:4566/ad-fusion/original/file.jpg',
+      );
 
       const result = await service.runById('capture-1');
 
@@ -163,7 +173,6 @@ describe('GetCorrectionCaptureReviewService', () => {
          CorrectionExam: {
             id: 'correction-1',
             score: 1,
-            attempt: 1,
             Items: [
                {
                   questionId: 'question-1',
