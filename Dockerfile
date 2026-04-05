@@ -47,6 +47,7 @@ COPY package.json pnpm-lock.yaml prisma.config.ts tsconfig.json ./
 COPY prisma ./prisma
 COPY scripts ./scripts
 COPY config ./config
+COPY --from=build /app/.prisma ./.prisma
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/src/modules/graphql/@generated ./src/modules/graphql/@generated
 
