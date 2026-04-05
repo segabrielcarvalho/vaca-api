@@ -17,6 +17,15 @@ const emailConfig = registerAs('email', () => {
          },
       },
       sendgrid: { apiKey: process.env.SENDGRID_API_KEY },
+      ses: {
+         endpoint: process.env.AWS_SES_ENDPOINT,
+         accessKeyId:
+            process.env.AWS_SES_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID,
+         secretAccessKey:
+            process.env.AWS_SES_SECRET_ACCESS_KEY ||
+            process.env.AWS_SECRET_ACCESS_KEY,
+         region: process.env.AWS_SES_REGION || process.env.AWS_REGION,
+      },
    };
 });
 
@@ -46,6 +55,13 @@ export const emailConfigValidation = z.object({
                'SENDGRID_API_KEY é obrigatório quando EMAIL_DRIVER for sendgrid',
          },
       ),
+   AWS_SES_ENDPOINT: z.string().optional(),
+   AWS_SES_ACCESS_KEY_ID: z.string().optional(),
+   AWS_SES_SECRET_ACCESS_KEY: z.string().optional(),
+   AWS_SES_REGION: z.string().optional(),
+   AWS_ACCESS_KEY_ID: z.string().optional(),
+   AWS_SECRET_ACCESS_KEY: z.string().optional(),
+   AWS_REGION: z.string().optional(),
 });
 
 export function validateEmailEnv(env: NodeJS.ProcessEnv) {

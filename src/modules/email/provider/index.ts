@@ -4,10 +4,12 @@ import logConfig from '../../logger/logger.config';
 import { MyLogger } from '../../logger/my-logger.service';
 import emailConfig from '../email.config';
 import EtherealImplementation from './implementations/ethereal/ethereal.implementation';
+import SesImplementation from './implementations/ses/ses.implementation';
 import SendGridImplementation from './implementations/sendgrid/sendgrid.implementation';
 
 const providers = {
    ethereal: EtherealImplementation,
+   ses: SesImplementation,
    sendgrid: SendGridImplementation,
 };
 
