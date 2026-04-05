@@ -52,9 +52,6 @@ COPY --from=build /app/src/modules/graphql/@generated ./src/modules/graphql/@gen
 
 EXPOSE 15003
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 CMD \
-  node -e "const port = process.env.PORT || 15003; require('http').get('http://127.0.0.1:' + port + '/api/health', res => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
-
 CMD ["node", "dist/src/main.js"]
 
 FROM base AS development
