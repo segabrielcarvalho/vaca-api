@@ -40,6 +40,7 @@ RUN pnpm build
 FROM base AS production
 
 ENV NODE_ENV=production
+ENV PORT=15003
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json pnpm-lock.yaml prisma.config.ts tsconfig.json ./
@@ -49,10 +50,10 @@ COPY config ./config
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/src/modules/graphql/@generated ./src/modules/graphql/@generated
 
-EXPOSE 11000
+EXPOSE 15003
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 CMD \
-  node -e "require('http').get('http://127.0.0.1:11000/api/health', res => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+  node -e "const port = process.env.PORT || 15003; require('http').get('http://127.0.0.1:' + port + '/api/health', res => process.exit(res.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
 CMD ["node", "dist/src/main.js"]
 
@@ -71,6 +72,6 @@ COPY start.sh ./start.sh
 
 RUN chmod +x /app/start.sh
 
-EXPOSE 11000
+EXPOSE 15003
 
 CMD ["/bin/sh", "/app/start.sh"]
