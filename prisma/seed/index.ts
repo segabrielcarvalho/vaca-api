@@ -118,6 +118,22 @@ async function createPlatformAdmin(prisma: PrismaClient) {
    try {
       const email = 'admin@vaca.local';
       const name = 'Admin User';
+
+      await prisma.school.upsert({
+         where: { institutionCode: 'VACA' },
+         update: {
+            name: 'VACA Platform',
+            description: 'Instituicao padrao da plataforma para o admin global.',
+            isActive: true,
+         },
+         create: {
+            institutionCode: 'VACA',
+            name: 'VACA Platform',
+            description: 'Instituicao padrao da plataforma para o admin global.',
+            isActive: true,
+         },
+      });
+
       const user = await prisma.user.upsert({
          where: { email },
          update: {
