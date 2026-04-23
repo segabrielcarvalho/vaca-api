@@ -21,6 +21,10 @@ const CSV_HEADER_ALIASES: Record<
    registrationnumber: 'registrationNumber',
    registration_number: 'registrationNumber',
    email: 'email',
+   e_mail: 'email',
+   mail: 'email',
+   email_address: 'email',
+   e_mail_address: 'email',
 };
 
 @Injectable()

@@ -1,4 +1,8 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import {
+   BadRequestException,
+   ConflictException,
+   Injectable,
+} from '@nestjs/common';
 import { RoleEnum } from '../../../../../.prisma/client';
 import { AuthCurrentUser } from '../../../auth/services/auth-context.service';
 import { CreateKlassStudentInput } from '../../inputs/create-klass-student.input';
@@ -49,6 +53,15 @@ export class CreateKlassStudentService {
          );
 
       if (existingStudent) {
+         await this.syncExistingStudentIdentity({
+            studentId: existingStudent.id,
+            userId: existingStudent.User.id,
+            currentEmail: existingStudent.User.email,
+            currentName: existingStudent.User.Profile?.name ?? null,
+            name,
+            email,
+         });
+
          const activeEnrollment = existingStudent.Enrollments.find(
             (enrollment) =>
                enrollment.klassId === input.klassId && !enrollment.endedAt,
@@ -180,5 +193,53 @@ export class CreateKlassStudentService {
             klassContext.schoolId,
          ),
       };
+   }
+
+   private async syncExistingStudentIdentity(input: {
+      studentId: string;
+      userId: string;
+      currentEmail: string;
+      currentName: string | null;
+      name: string;
+      email: string | null | undefined;
+   }) {
+      const nextEmail =
+         input.email && input.email !== input.currentEmail
+            ? input.email
+            : null;
+
+      if (nextEmail) {
+         const emailOwner = await this.rules.findUserByEmail(nextEmail);
+         if (emailOwner) {
+            await this.rules.assertUserCanBeStudent(emailOwner);
+            if (
+               emailOwner.Student &&
+               emailOwner.Student.id !== input.studentId
+            ) {
+               throw new ConflictException(
+                  'O e-mail informado já está vinculado a outro aluno.',
+               );
+            }
+
+            if (emailOwner.id !== input.userId) {
+               throw new BadRequestException(
+                  'Não é possível transferir o vínculo do aluno para outro usuário existente.',
+               );
+            }
+         }
+
+         await this.rules.prisma.user.update({
+            where: {
+               id: input.userId,
+            },
+            data: {
+               email: nextEmail,
+            },
+         });
+      }
+
+      if (input.name !== input.currentName) {
+         await this.rules.upsertProfileName(input.userId, input.name);
+      }
    }
 }

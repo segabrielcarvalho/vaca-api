@@ -20,6 +20,9 @@ describe('CreateKlassStudentService', () => {
       generateTechnicalEmail: jest.Mock;
       upsertProfileName: jest.Mock;
       prisma: {
+         user: {
+            update: jest.Mock;
+         };
          studentKlass: {
             update: jest.Mock;
             create: jest.Mock;
@@ -65,6 +68,9 @@ describe('CreateKlassStudentService', () => {
             .mockResolvedValue('student.reg.school.123456@no-login.local'),
          upsertProfileName: jest.fn().mockResolvedValue(undefined),
          prisma: {
+            user: {
+               update: jest.fn().mockResolvedValue(undefined),
+            },
             studentKlass: {
                update: jest.fn().mockResolvedValue(undefined),
                create: jest.fn().mockResolvedValue(undefined),
@@ -81,6 +87,13 @@ describe('CreateKlassStudentService', () => {
    it('retorna sucesso idempotente quando o aluno ja esta ativo na turma', async () => {
       rules.findStudentBySchoolAndRegistration.mockResolvedValue({
          id: 'student-1',
+         User: {
+            id: 'student-user-1',
+            email: 'alice@example.com',
+            Profile: {
+               name: 'Alice',
+            },
+         },
          Enrollments: [
             {
                id: 'enrollment-1',
@@ -106,6 +119,8 @@ describe('CreateKlassStudentService', () => {
       expect(result.status).toBe('already_active');
       expect(rules.prisma.studentKlass.update).not.toHaveBeenCalled();
       expect(rules.prisma.studentKlass.create).not.toHaveBeenCalled();
+      expect(rules.prisma.user.update).not.toHaveBeenCalled();
+      expect(rules.upsertProfileName).not.toHaveBeenCalled();
       expect(rules.getStudentInKlass).toHaveBeenCalledWith(
          'student-1',
          'klass-1',
@@ -116,6 +131,13 @@ describe('CreateKlassStudentService', () => {
    it('reativa o vinculo quando o aluno ja existia com matricula na mesma turma', async () => {
       rules.findStudentBySchoolAndRegistration.mockResolvedValue({
          id: 'student-1',
+         User: {
+            id: 'student-user-1',
+            email: 'alice@example.com',
+            Profile: {
+               name: 'Alice',
+            },
+         },
          Enrollments: [
             {
                id: 'enrollment-1',
@@ -149,6 +171,13 @@ describe('CreateKlassStudentService', () => {
    it('vincula aluno existente da mesma escola quando ainda nao ha matricula na turma', async () => {
       rules.findStudentBySchoolAndRegistration.mockResolvedValue({
          id: 'student-1',
+         User: {
+            id: 'student-user-1',
+            email: 'alice@example.com',
+            Profile: {
+               name: 'Alice',
+            },
+         },
          Enrollments: [
             {
                id: 'enrollment-2',
@@ -175,6 +204,148 @@ describe('CreateKlassStudentService', () => {
          },
       });
       expect(rules.prisma.studentKlass.update).not.toHaveBeenCalled();
+   });
+
+   it('atualiza nome e email do aluno existente quando a matricula bate', async () => {
+      rules.findStudentBySchoolAndRegistration.mockResolvedValue({
+         id: 'student-1',
+         User: {
+            id: 'student-user-1',
+            email: 'student.reg.school.123456@no-login.local',
+            Profile: {
+               name: 'Nome Antigo',
+            },
+         },
+         Enrollments: [
+            {
+               id: 'enrollment-2',
+               klassId: 'klass-2',
+               endedAt: null,
+            },
+         ],
+      });
+      rules.findUserByEmail.mockResolvedValue(null);
+
+      const result = await service.runDetailed(
+         {
+            klassId: 'klass-1',
+            name: ' Alice Atualizada ',
+            registrationNumber: 'reg-001',
+            email: 'ALICE@EXAMPLE.COM',
+         },
+         { id: 'user-1', role: RoleEnum.user } as never,
+      );
+
+      expect(result.status).toBe('linked');
+      expect(rules.prisma.user.update).toHaveBeenCalledWith({
+         where: {
+            id: 'student-user-1',
+         },
+         data: {
+            email: 'alice@example.com',
+         },
+      });
+      expect(rules.upsertProfileName).toHaveBeenCalledWith(
+         'student-user-1',
+         'Alice Atualizada',
+      );
+      expect(rules.prisma.studentKlass.create).toHaveBeenCalledWith({
+         data: {
+            studentId: 'student-1',
+            klassId: 'klass-1',
+         },
+      });
+   });
+
+   it('mantem idempotente o mesmo aluno importado novamente e sincroniza dados do csv', async () => {
+      rules.findStudentBySchoolAndRegistration.mockResolvedValue({
+         id: 'student-1',
+         User: {
+            id: 'student-user-1',
+            email: 'old@example.com',
+            Profile: {
+               name: 'Nome Antigo',
+            },
+         },
+         Enrollments: [
+            {
+               id: 'enrollment-1',
+               klassId: 'klass-1',
+               endedAt: null,
+            },
+         ],
+      });
+      rules.findUserByEmail.mockResolvedValue(null);
+
+      const result = await service.runDetailed(
+         {
+            klassId: 'klass-1',
+            name: 'Nome Novo',
+            registrationNumber: 'reg-001',
+            email: 'novo@example.com',
+         },
+         { id: 'user-1', role: RoleEnum.user } as never,
+      );
+
+      expect(result.status).toBe('already_active');
+      expect(rules.prisma.studentKlass.create).not.toHaveBeenCalled();
+      expect(rules.prisma.studentKlass.update).not.toHaveBeenCalled();
+      expect(rules.prisma.user.update).toHaveBeenCalledWith({
+         where: {
+            id: 'student-user-1',
+         },
+         data: {
+            email: 'novo@example.com',
+         },
+      });
+      expect(rules.upsertProfileName).toHaveBeenCalledWith(
+         'student-user-1',
+         'Nome Novo',
+      );
+   });
+
+   it('bloqueia atualizacao de email quando pertence a outro aluno', async () => {
+      rules.findStudentBySchoolAndRegistration.mockResolvedValue({
+         id: 'student-1',
+         User: {
+            id: 'student-user-1',
+            email: 'old@example.com',
+            Profile: {
+               name: 'Alice',
+            },
+         },
+         Enrollments: [
+            {
+               id: 'enrollment-2',
+               klassId: 'klass-2',
+               endedAt: null,
+            },
+         ],
+      });
+      rules.findUserByEmail.mockResolvedValue({
+         id: 'other-user',
+         Agent: null,
+         Student: {
+            id: 'other-student',
+            schoolId: 'school-1',
+            registrationNumber: 'REG-999',
+         },
+      });
+
+      await expect(
+         service.runDetailed(
+            {
+               klassId: 'klass-1',
+               name: 'Alice',
+               registrationNumber: 'reg-001',
+               email: 'other@example.com',
+            },
+            { id: 'user-1', role: RoleEnum.user } as never,
+         ),
+      ).rejects.toThrow('O e-mail informado já está vinculado a outro aluno.');
+
+      expect(rules.prisma.user.update).not.toHaveBeenCalled();
+      expect(rules.prisma.studentKlass.create).not.toHaveBeenCalled();
    });
 
    it('cria aluno novo com email tecnico quando ele nao existe na escola', async () => {
