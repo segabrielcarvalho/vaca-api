@@ -61,6 +61,14 @@ describe('SchoolRulesService', () => {
       ).rejects.toThrow(ConflictException);
    });
 
+   it('deve detectar conflito para institutionCode manual duplicado', async () => {
+      prisma.school.findUnique.mockResolvedValue({ id: 'school-1' });
+
+      await expect(
+         service.assertInstitutionCodeUniqueness('ESCOLAALPHA'),
+      ).rejects.toThrow(ConflictException);
+   });
+
    it('deve gerar institutionCode unico com sufixo incremental em colisao', async () => {
       prisma.school.findUnique
          .mockResolvedValueOnce({ id: 'school-1' })

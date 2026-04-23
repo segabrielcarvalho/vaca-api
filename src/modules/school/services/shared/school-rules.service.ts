@@ -145,6 +145,22 @@ export class SchoolRulesService {
       );
    }
 
+   async assertInstitutionCodeUniqueness(
+      institutionCode: string,
+      ignoreSchoolId?: string,
+   ): Promise<void> {
+      const duplicate = await this.prisma.school.findUnique({
+         where: { institutionCode },
+         select: { id: true },
+      });
+
+      if (duplicate && duplicate.id !== ignoreSchoolId) {
+         throw new ConflictException(
+            'Ja existe uma escola com este codigo institucional.',
+         );
+      }
+   }
+
    extractSchoolId(where: { id?: string | null } | undefined | null): string {
       const id = where?.id;
       if (typeof id !== 'string' || id.trim().length === 0) {

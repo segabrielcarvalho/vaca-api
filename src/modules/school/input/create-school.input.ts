@@ -11,6 +11,11 @@ export class CreateSchoolInput {
    @Field({ nullable: true })
    @IsOptional()
    @IsString()
+   institutionCode?: string | null;
+
+   @Field({ nullable: true })
+   @IsOptional()
+   @IsString()
    description?: string;
 
    @Field({ nullable: true })

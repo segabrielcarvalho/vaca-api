@@ -21,7 +21,6 @@ export class CreateSchoolService {
 
    async run(args: CreateSchoolArgs, user: AuthCurrentUser) {
       this.rules.detectUnsupportedNestedOperations(args.data, [
-         'institutionCode',
          'id',
          'createdAt',
          'updatedAt',
@@ -30,8 +29,10 @@ export class CreateSchoolService {
       ]);
 
       const normalizedName = this.rules.normalizeName(args.data.name);
-      const institutionCode =
-         await this.rules.generateUniqueInstitutionCode(normalizedName);
+      const institutionCode = await this.resolveInstitutionCode(
+         args.data.institutionCode,
+         normalizedName,
+      );
       const isActive = args.data.isActive ?? true;
 
       if (isActive) {
@@ -85,6 +86,19 @@ export class CreateSchoolService {
       this.logger.log(`Escola "${school.id}" criada com sucesso.`);
 
       return school;
+   }
+
+   private async resolveInstitutionCode(
+      value: string | null | undefined,
+      normalizedName: string,
+   ): Promise<string> {
+      if (value == null || value.trim().length === 0) {
+         return this.rules.generateUniqueInstitutionCode(normalizedName);
+      }
+
+      const institutionCode = this.rules.normalizeInstitutionCode(value);
+      await this.rules.assertInstitutionCodeUniqueness(institutionCode);
+      return institutionCode;
    }
 
    private async assignOwnerMembership(

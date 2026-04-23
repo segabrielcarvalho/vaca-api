@@ -23,7 +23,9 @@ describe('CreateSchoolService', () => {
       normalizeBrandingPath: jest.Mock;
       normalizeHexColor: jest.Mock;
       assertActiveNameUniqueness: jest.Mock;
+      assertInstitutionCodeUniqueness: jest.Mock;
       generateUniqueInstitutionCode: jest.Mock;
+      normalizeInstitutionCode: jest.Mock;
    };
    let service: CreateSchoolService;
 
@@ -46,7 +48,9 @@ describe('CreateSchoolService', () => {
          normalizeBrandingPath: jest.fn(),
          normalizeHexColor: jest.fn(),
          assertActiveNameUniqueness: jest.fn(),
+         assertInstitutionCodeUniqueness: jest.fn(),
          generateUniqueInstitutionCode: jest.fn(),
+         normalizeInstitutionCode: jest.fn(),
       };
 
       service = new CreateSchoolService(
@@ -88,6 +92,11 @@ describe('CreateSchoolService', () => {
       expect(rules.assertActiveNameUniqueness).toHaveBeenCalledWith(
          'Escola Alpha',
       );
+      expect(rules.generateUniqueInstitutionCode).toHaveBeenCalledWith(
+         'Escola Alpha',
+      );
+      expect(rules.normalizeInstitutionCode).not.toHaveBeenCalled();
+      expect(rules.assertInstitutionCodeUniqueness).not.toHaveBeenCalled();
       expect(prisma.school.create).toHaveBeenCalledWith({
          data: {
             name: 'Escola Alpha',
@@ -114,6 +123,44 @@ describe('CreateSchoolService', () => {
          },
       });
       expect(result).toEqual({ id: 'school-1' });
+   });
+
+   it('deve criar escola usando institutionCode manual normalizado', async () => {
+      rules.normalizeName.mockReturnValue('Escola Alpha');
+      rules.normalizeInstitutionCode.mockReturnValue('ALPHA01');
+      rules.normalizeOptional.mockReturnValue(undefined);
+      rules.normalizeBrandingPath.mockReturnValue(undefined);
+      rules.normalizeHexColor
+         .mockReturnValueOnce(undefined)
+         .mockReturnValueOnce(undefined);
+      prisma.school.create.mockResolvedValue({ id: 'school-1' });
+      prisma.aclRole.findUnique.mockResolvedValue({ id: 'role-school-owner' });
+      prisma.agent.findUnique.mockResolvedValue({ id: 'agent-1' });
+
+      await service.run(
+         {
+            data: {
+               name: 'Escola Alpha',
+               institutionCode: ' alpha-01 ',
+            },
+         } as any,
+         { id: 'user-1', role: RoleEnum.admin } as any,
+      );
+
+      expect(rules.generateUniqueInstitutionCode).not.toHaveBeenCalled();
+      expect(rules.normalizeInstitutionCode).toHaveBeenCalledWith(' alpha-01 ');
+      expect(rules.assertInstitutionCodeUniqueness).toHaveBeenCalledWith(
+         'ALPHA01',
+      );
+      expect(prisma.school.create).toHaveBeenCalledWith({
+         data: {
+            name: 'Escola Alpha',
+            institutionCode: 'ALPHA01',
+            primaryColor: '#FACC15',
+            secondaryColor: '#000000',
+            isActive: true,
+         },
+      });
    });
 
    it('deve falhar quando usuario nao possuir Agent para ownership', async () => {
