@@ -3890,7 +3890,10 @@ input CompleteCorrectionSessionInput {
 }
 
 input CompleteInviteProfileInput {
+  channel: AuthChannelEnum!
   contextId: String!
+  deviceId: String!
+  deviceName: String
   locale: String!
   name: String!
   notificationPrefsJson: String!
@@ -7895,6 +7898,7 @@ input CreateSchoolInput {
   bannerPath: String
   description: String
   faviconPath: String
+  institutionCode: String
   isActive: Boolean
   logoFullPath: String
   logoMarkPath: String
@@ -8830,11 +8834,6 @@ type InviteEmailVerified {
   expiresAt: DateTime!
 }
 
-type InviteProfileCompleted {
-  contextId: String!
-  profileCompletedAt: DateTime!
-}
-
 input InviteSchoolMemberInput {
   courseId: String
   email: String!
@@ -9463,7 +9462,7 @@ input LogoutCurrentSessionInput {
 type Mutation {
   archiveOmrTemplate(input: ArchiveOmrTemplateInput!): OmrTemplate!
   completeCorrectionSession(input: CompleteCorrectionSessionInput!): CorrectionSession!
-  completeInviteProfile(data: CompleteInviteProfileInput!): InviteProfileCompleted!
+  completeInviteProfile(data: CompleteInviteProfileInput!): AuthSessionResult!
   consumeEmailLoginMagicLink(data: ConsumeEmailLoginMagicLinkInput!): AuthSessionResult!
   consumeInviteMagicLink(data: ConsumeInviteMagicLinkInput!): InviteEmailVerified!
   createCourse(data: CourseCreateInput!): Course!
