@@ -31,6 +31,7 @@ import { SchoolMemberListObject } from '../objects/school-member-list.object';
 import { SchoolMemberPermissionObject } from '../objects/school-member-permission.object';
 import { SchoolMemberScopeOptionObject } from '../objects/school-member-scope-option.object';
 import { SchoolMemberObject } from '../objects/school-member.object';
+import { AclDescendantMembershipService } from './acl-descendant-membership.service';
 
 type AgentWithMemberships = Prisma.AgentGetPayload<{
    include: {
@@ -67,6 +68,16 @@ type AgentWithMemberships = Prisma.AgentGetPayload<{
 type MemberManagementScope = {
    scopeType: AclScopeType;
    scopeId: string;
+   schoolId: string;
+   courseId: string | null;
+   klassId: string | null;
+};
+
+type SchoolMemberInviteOptions = {
+   requestOrigin?: string;
+};
+
+type InviteScopeMetadata = {
    schoolId: string;
    courseId: string | null;
    klassId: string | null;
@@ -114,6 +125,7 @@ export class SchoolMemberService {
       private readonly prisma: PrismaService,
       private readonly scopedAccessService: ScopedAccessService,
       private readonly inviteUserService: InviteUserService,
+      private readonly descendantMembershipService: AclDescendantMembershipService,
       private readonly logger: MyLogger,
    ) {
       this.logger.setContext(SchoolMemberService.name);
@@ -134,6 +146,7 @@ export class SchoolMemberService {
          scopeType: scope.scopeType,
          scopeId: scope.scopeId,
       });
+      await this.syncDescendantMembershipsForScope(scope);
 
       const normalizedSearch = input.search?.trim() ?? '';
       const take = this.normalizeTake(input.take, 10);
@@ -538,28 +551,27 @@ export class SchoolMemberService {
          ...this.buildInviteStatusWhere(input.status, now),
       };
 
-      const [count, rows] = await Promise.all([
-         this.prisma.authInvite.count({ where }),
-         this.prisma.authInvite.findMany({
+      const scopedRows = (
+         await this.prisma.authInvite.findMany({
             where,
             orderBy: [{ createdAt: 'desc' }],
-            skip,
-            take,
             select: {
                id: true,
                email: true,
                userId: true,
                invitedByUserId: true,
+               metadata: true,
                createdAt: true,
                expiresAt: true,
                acceptedAt: true,
                revokedAt: true,
             },
-         }),
-      ]);
+         })
+      ).filter((invite) => this.inviteBelongsToScope(invite, scope));
+      const rows = scopedRows.slice(skip, skip + take);
 
       return {
-         count,
+         count: scopedRows.length,
          rows: rows.map((invite) =>
             this.mapInviteObject(invite, now, roleByUserId.get(invite.userId)),
          ),
@@ -589,6 +601,7 @@ export class SchoolMemberService {
    async inviteSchoolMember(
       user: AuthCurrentUser,
       input: InviteSchoolMemberInput,
+      options?: SchoolMemberInviteOptions,
    ): Promise<SchoolMemberInviteObject> {
       const scope = await this.resolveManagementScope({
          schoolId: input.schoolId,
@@ -632,17 +645,23 @@ export class SchoolMemberService {
 
       const normalizedEmail = input.email.trim().toLowerCase();
 
-      await this.inviteUserService.run(user, {
-         email: normalizedEmail,
-         metadataJson: JSON.stringify({
-            source: 'school_members_admin',
-            schoolId: scope.schoolId,
-            courseId: scope.courseId,
-            klassId: scope.klassId,
-            roleCode: role.code,
-            schoolRoleCode: role.code,
-         }),
-      });
+      await this.inviteUserService.run(
+         user,
+         {
+            email: normalizedEmail,
+            metadataJson: JSON.stringify({
+               source: 'school_members_admin',
+               schoolId: scope.schoolId,
+               courseId: scope.courseId,
+               klassId: scope.klassId,
+               roleCode: role.code,
+               schoolRoleCode: role.code,
+            }),
+         },
+         {
+            requestOrigin: options?.requestOrigin,
+         },
+      );
 
       const targetUser = await this.prisma.user.findUnique({
          where: { email: normalizedEmail },
@@ -673,6 +692,12 @@ export class SchoolMemberService {
             roleId: role.id,
             ...this.getScopeMembershipCreateData(scope),
          },
+      });
+      await this.descendantMembershipService.syncForMembership({
+         agentId: agent.id,
+         scopeType: scope.scopeType,
+         scopeId: scope.scopeId,
+         roleCode: role.code,
       });
 
       const invite = await this.prisma.authInvite.findFirst({
@@ -712,6 +737,7 @@ export class SchoolMemberService {
    async resendSchoolMemberInvite(
       user: AuthCurrentUser,
       input: ResendSchoolMemberInviteInput,
+      options?: SchoolMemberInviteOptions,
    ): Promise<SchoolMemberInviteObject> {
       const scope = await this.resolveManagementScope({
          schoolId: input.schoolId,
@@ -753,14 +779,18 @@ export class SchoolMemberService {
          });
       }
 
-      const resent = await this.inviteSchoolMember(user, {
-         schoolId: scope.schoolId,
-         courseId: scope.courseId ?? undefined,
-         klassId: scope.klassId ?? undefined,
-         email: invite.email,
-         roleCode,
-         schoolRoleCode: roleCode,
-      });
+      const resent = await this.inviteSchoolMember(
+         user,
+         {
+            schoolId: scope.schoolId,
+            courseId: scope.courseId ?? undefined,
+            klassId: scope.klassId ?? undefined,
+            email: invite.email,
+            roleCode,
+            schoolRoleCode: roleCode,
+         },
+         options,
+      );
 
       return resent;
    }
@@ -1120,15 +1150,7 @@ export class SchoolMemberService {
    private buildScopeFilterMembershipWhere(
       scope: MemberManagementScope,
    ): Prisma.AclMembershipWhereInput {
-      if (scope.scopeType === AclScopeType.klass) {
-         return { klassId: scope.scopeId };
-      }
-
-      if (scope.scopeType === AclScopeType.course) {
-         return this.buildCourseHierarchyMembershipWhere(scope.scopeId);
-      }
-
-      return this.buildSchoolHierarchyMembershipWhere(scope.schoolId);
+      return this.buildScopeRelatedMembershipWhere(scope);
    }
 
    private buildScopeRelatedMembershipWhere(
@@ -1293,12 +1315,35 @@ export class SchoolMemberService {
                membership.klassId &&
                membership.Klass?.courseId === scope.scopeId,
          );
-         return klassRole?.Role.code ?? null;
+         if (klassRole) {
+            return klassRole.Role.code;
+         }
+
+         return (
+            memberships.find(
+               (membership) => membership.schoolId === scope.schoolId,
+            )?.Role.code ?? null
+         );
+      }
+
+      const directKlassRole = memberships.find(
+         (membership) => membership.klassId === scope.scopeId,
+      );
+      if (directKlassRole) {
+         return directKlassRole.Role.code;
+      }
+
+      const courseRole = memberships.find(
+         (membership) => membership.courseId === scope.courseId,
+      );
+      if (courseRole) {
+         return courseRole.Role.code;
       }
 
       return (
-         memberships.find((membership) => membership.klassId === scope.scopeId)
-            ?.Role.code ?? null
+         memberships.find(
+            (membership) => membership.schoolId === scope.schoolId,
+         )?.Role.code ?? null
       );
    }
 
@@ -1548,13 +1593,143 @@ export class SchoolMemberService {
          scope,
       );
 
-      if (!invite?.User?.Agent?.id || !roleCode) {
+      if (
+         !invite?.User?.Agent?.id ||
+         !roleCode ||
+         !this.inviteBelongsToScope(invite, scope)
+      ) {
          throw new NotFoundException(
             'Convite nao encontrado para membros deste escopo.',
          );
       }
 
       return invite;
+   }
+
+   private async syncDescendantMembershipsForScope(
+      scope: MemberManagementScope,
+   ): Promise<void> {
+      const memberships = await this.prisma.aclMembership.findMany({
+         where: this.buildParentMembershipWhereForSync(scope),
+         select: {
+            agentId: true,
+            schoolId: true,
+            courseId: true,
+            Role: {
+               select: {
+                  code: true,
+               },
+            },
+         },
+      });
+
+      for (const membership of memberships) {
+         if (membership.schoolId) {
+            await this.descendantMembershipService.syncForMembership({
+               agentId: membership.agentId,
+               scopeType: AclScopeType.school,
+               scopeId: membership.schoolId,
+               roleCode: membership.Role.code,
+            });
+            continue;
+         }
+
+         if (membership.courseId) {
+            await this.descendantMembershipService.syncForMembership({
+               agentId: membership.agentId,
+               scopeType: AclScopeType.course,
+               scopeId: membership.courseId,
+               roleCode: membership.Role.code,
+            });
+         }
+      }
+   }
+
+   private buildParentMembershipWhereForSync(
+      scope: MemberManagementScope,
+   ): Prisma.AclMembershipWhereInput {
+      if (scope.scopeType === AclScopeType.school) {
+         return { schoolId: scope.schoolId };
+      }
+
+      if (scope.scopeType === AclScopeType.course) {
+         return {
+            OR: [{ schoolId: scope.schoolId }, { courseId: scope.scopeId }],
+         };
+      }
+
+      const where: Prisma.AclMembershipWhereInput[] = [
+         { schoolId: scope.schoolId },
+      ];
+      if (scope.courseId) {
+         where.push({ courseId: scope.courseId });
+      }
+
+      return { OR: where };
+   }
+
+   private inviteBelongsToScope(
+      invite: { metadata?: Prisma.JsonValue | null },
+      scope: MemberManagementScope,
+   ): boolean {
+      const metadata = this.parseInviteScopeMetadata(invite.metadata);
+      if (!metadata || metadata.schoolId !== scope.schoolId) {
+         return false;
+      }
+
+      if (scope.scopeType === AclScopeType.school) {
+         return true;
+      }
+
+      if (scope.scopeType === AclScopeType.course) {
+         return metadata.courseId === scope.courseId;
+      }
+
+      return metadata.klassId === scope.klassId;
+   }
+
+   private parseInviteScopeMetadata(
+      metadata: Prisma.JsonValue | null | undefined,
+   ): InviteScopeMetadata | null {
+      if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+         return null;
+      }
+
+      const raw = (metadata as Record<string, unknown>).raw;
+      let parsed: unknown = metadata;
+
+      if (typeof raw === 'string') {
+         try {
+            parsed = JSON.parse(raw);
+         } catch {
+            return null;
+         }
+      }
+
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+         return null;
+      }
+
+      const record = parsed as Record<string, unknown>;
+      const schoolId = this.readMetadataString(record.schoolId);
+      if (!schoolId) {
+         return null;
+      }
+
+      return {
+         schoolId,
+         courseId: this.readMetadataString(record.courseId),
+         klassId: this.readMetadataString(record.klassId),
+      };
+   }
+
+   private readMetadataString(value: unknown): string | null {
+      if (typeof value !== 'string') {
+         return null;
+      }
+
+      const normalized = value.trim();
+      return normalized.length > 0 ? normalized : null;
    }
 
    private normalizeTake(value: number | undefined, fallback: number): number {

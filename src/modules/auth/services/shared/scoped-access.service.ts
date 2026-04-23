@@ -92,7 +92,7 @@ export class ScopedAccessService {
          scopeType,
          scopeId,
       });
-      if (actorRank === undefined || targetRoleRank >= actorRank) {
+      if (actorRank === undefined || targetRoleRank > actorRank) {
          throw new ForbiddenException('Acesso negado');
       }
    }
@@ -227,6 +227,7 @@ export class ScopedAccessService {
          select: {
             Role: {
                select: {
+                  code: true,
                   RolePermissions: {
                      where: {
                         Permission: {
@@ -267,7 +268,48 @@ export class ScopedAccessService {
          return 'allow';
       }
 
+      if (
+         this.roleImpliesPermission({
+            roleCode: membership.Role.code,
+            target: input.target,
+            permissionCode: input.permissionCode,
+         })
+      ) {
+         return 'allow';
+      }
+
       return null;
+   }
+
+   private roleImpliesPermission(input: {
+      roleCode: string;
+      target: ScopeTarget;
+      permissionCode: string;
+   }): boolean {
+      const permissionScope = input.permissionCode.split('.')[0];
+
+      if (
+         input.target.scopeType === AclScopeType.school &&
+         ['school_owner', 'school_manager'].includes(input.roleCode)
+      ) {
+         return ['school', 'course', 'klass'].includes(permissionScope);
+      }
+
+      if (
+         input.target.scopeType === AclScopeType.course &&
+         ['course_owner', 'course_manager'].includes(input.roleCode)
+      ) {
+         return ['course', 'klass'].includes(permissionScope);
+      }
+
+      if (
+         input.target.scopeType === AclScopeType.klass &&
+         ['klass_owner', 'klass_manager'].includes(input.roleCode)
+      ) {
+         return permissionScope === 'klass';
+      }
+
+      return false;
    }
 
    private async getDirectRoleRankAtTarget(input: {

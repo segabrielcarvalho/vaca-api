@@ -12,6 +12,7 @@ import { ListAclMembershipsArgs } from '../inputs/list-acl-memberships.args';
 import { RemoveAclMembershipInput } from '../inputs/remove-acl-membership.input';
 import { UpsertAclMembershipInput } from '../inputs/upsert-acl-membership.input';
 import { AclMembershipObject } from '../objects/acl-membership.object';
+import { AclDescendantMembershipService } from './acl-descendant-membership.service';
 
 type MembershipWithRole = Prisma.AclMembershipGetPayload<{
    include: { Role: { select: { code: true; rank: true } } };
@@ -22,6 +23,7 @@ export class AclMembershipService {
    constructor(
       private readonly prisma: PrismaService,
       private readonly scopedAccessService: ScopedAccessService,
+      private readonly descendantMembershipService: AclDescendantMembershipService,
       private readonly logger: MyLogger,
    ) {
       this.logger.setContext(AclMembershipService.name);
@@ -102,6 +104,12 @@ export class AclMembershipService {
             ...this.getScopeCreateData(input.scopeType, input.scopeId),
          },
          include: { Role: { select: { code: true, rank: true } } },
+      });
+      await this.descendantMembershipService.syncForMembership({
+         agentId: input.agentId,
+         scopeType: input.scopeType,
+         scopeId: input.scopeId,
+         roleCode: role.code,
       });
 
       return this.mapMembership(input.scopeType, input.scopeId, row);

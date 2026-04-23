@@ -7,6 +7,7 @@ import { AclMembershipPermissionOverrideResolver } from './resolvers/acl-members
 import { SchoolMemberResolver } from './resolvers/school-member.resolver';
 import { AclMembershipService } from './services/acl-membership.service';
 import { AclMembershipPermissionOverrideService } from './services/acl-membership-permission-override.service';
+import { AclDescendantMembershipService } from './services/acl-descendant-membership.service';
 import { SchoolMemberService } from './services/school-member.service';
 
 @Module({
@@ -14,6 +15,7 @@ import { SchoolMemberService } from './services/school-member.service';
    providers: [
       AclMembershipResolver,
       AclMembershipService,
+      AclDescendantMembershipService,
       AclMembershipPermissionOverrideResolver,
       AclMembershipPermissionOverrideService,
       SchoolMemberResolver,

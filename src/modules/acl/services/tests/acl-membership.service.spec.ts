@@ -5,6 +5,7 @@ import { AclMembershipService } from '../acl-membership.service';
 describe('AclMembershipService', () => {
    let prisma: any;
    let scopedAccessService: any;
+   let descendantMembershipService: any;
    let logger: any;
    let service: AclMembershipService;
 
@@ -26,6 +27,9 @@ describe('AclMembershipService', () => {
          assertAssignableRole: jest.fn(),
          assertCanManageMembership: jest.fn(),
       };
+      descendantMembershipService = {
+         syncForMembership: jest.fn().mockResolvedValue(undefined),
+      };
       logger = {
          setContext: jest.fn(),
          debug: jest.fn(),
@@ -34,6 +38,7 @@ describe('AclMembershipService', () => {
       service = new AclMembershipService(
          prisma as any,
          scopedAccessService as any,
+         descendantMembershipService as any,
          logger as any,
       );
    });
@@ -73,6 +78,14 @@ describe('AclMembershipService', () => {
          scopeId: 'school-1',
          targetRoleRank: 300,
       });
+      expect(descendantMembershipService.syncForMembership).toHaveBeenCalledWith(
+         {
+            agentId: 'agent-1',
+            scopeType: AclScopeType.school,
+            scopeId: 'school-1',
+            roleCode: 'school_manager',
+         },
+      );
       expect(result.roleCode).toBe('school_manager');
    });
 

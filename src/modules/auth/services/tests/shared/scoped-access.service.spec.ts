@@ -42,7 +42,11 @@ describe('ScopedAccessService', () => {
 
       await expect(
          service.assertPermission({
-            user: { id: 'user-1', role: RoleEnum.user } as any,
+            user: {
+               id: 'user-1',
+               role: RoleEnum.user,
+               selectedSchoolId: 'school-1',
+            } as any,
             permissionCode: 'course.update',
             scopeType: AclScopeType.course,
             scopeId: 'course-1',
@@ -50,7 +54,7 @@ describe('ScopedAccessService', () => {
       ).resolves.toBeUndefined();
    });
 
-   it('deve bloquear atribuicao de role igual ao rank do ator', async () => {
+   it('deve permitir atribuicao de role igual ao rank do ator', async () => {
       prisma.agent.findUnique.mockResolvedValue({ id: 'agent-1' });
       prisma.aclMembership.findFirst
          .mockResolvedValueOnce({
@@ -61,12 +65,90 @@ describe('ScopedAccessService', () => {
 
       await expect(
          service.assertAssignableRole({
-            user: { id: 'user-1', role: RoleEnum.user } as any,
+            user: {
+               id: 'user-1',
+               role: RoleEnum.user,
+               selectedSchoolId: 'school-1',
+            } as any,
             scopeType: AclScopeType.school,
             scopeId: 'school-1',
             targetRoleRank: 300,
          }),
+      ).resolves.toBeUndefined();
+   });
+
+   it('deve bloquear atribuicao de role acima do rank do ator', async () => {
+      prisma.agent.findUnique.mockResolvedValue({ id: 'agent-1' });
+      prisma.aclMembership.findFirst
+         .mockResolvedValueOnce({
+            PermissionOverrides: [],
+            Role: { RolePermissions: [{ id: 'rp-1' }] },
+         })
+         .mockResolvedValueOnce({ Role: { rank: 300 } });
+
+      await expect(
+         service.assertAssignableRole({
+            user: {
+               id: 'user-1',
+               role: RoleEnum.user,
+               selectedSchoolId: 'school-1',
+            } as any,
+            scopeType: AclScopeType.school,
+            scopeId: 'school-1',
+            targetRoleRank: 400,
+         }),
       ).rejects.toThrow(ForbiddenException);
+   });
+
+   it('deve permitir admin de escola gerenciar membros de curso por hierarquia', async () => {
+      prisma.agent.findUnique.mockResolvedValue({ id: 'agent-1' });
+      prisma.course.findUnique.mockResolvedValue({ schoolId: 'school-1' });
+      prisma.aclMembership.findFirst
+         .mockResolvedValueOnce(null)
+         .mockResolvedValueOnce({
+            PermissionOverrides: [],
+            Role: { code: 'school_manager', RolePermissions: [] },
+         });
+
+      await expect(
+         service.assertPermission({
+            user: {
+               id: 'user-1',
+               role: RoleEnum.user,
+               selectedSchoolId: 'school-1',
+            } as any,
+            permissionCode: 'course.membership.manage',
+            scopeType: AclScopeType.course,
+            scopeId: 'course-1',
+         }),
+      ).resolves.toBeUndefined();
+   });
+
+   it('deve permitir admin de curso gerenciar membros de turma por hierarquia', async () => {
+      prisma.agent.findUnique.mockResolvedValue({ id: 'agent-1' });
+      prisma.klass.findUnique.mockResolvedValue({
+         courseId: 'course-1',
+         Course: { schoolId: 'school-1' },
+      });
+      prisma.aclMembership.findFirst
+         .mockResolvedValueOnce(null)
+         .mockResolvedValueOnce({
+            PermissionOverrides: [],
+            Role: { code: 'course_manager', RolePermissions: [] },
+         });
+
+      await expect(
+         service.assertPermission({
+            user: {
+               id: 'user-1',
+               role: RoleEnum.user,
+               selectedSchoolId: 'school-1',
+            } as any,
+            permissionCode: 'klass.membership.manage',
+            scopeType: AclScopeType.klass,
+            scopeId: 'klass-1',
+         }),
+      ).resolves.toBeUndefined();
    });
 
    it('deve negar quando houver override deny no escopo mais especifico', async () => {
@@ -79,7 +161,11 @@ describe('ScopedAccessService', () => {
 
       await expect(
          service.assertPermission({
-            user: { id: 'user-1', role: RoleEnum.user } as any,
+            user: {
+               id: 'user-1',
+               role: RoleEnum.user,
+               selectedSchoolId: 'school-1',
+            } as any,
             permissionCode: 'klass.membership.manage',
             scopeType: AclScopeType.course,
             scopeId: 'course-1',
@@ -99,7 +185,11 @@ describe('ScopedAccessService', () => {
 
       await expect(
          service.assertPermission({
-            user: { id: 'user-1', role: RoleEnum.user } as any,
+            user: {
+               id: 'user-1',
+               role: RoleEnum.user,
+               selectedSchoolId: 'school-1',
+            } as any,
             permissionCode: 'klass.membership.manage',
             scopeType: AclScopeType.course,
             scopeId: 'course-1',
