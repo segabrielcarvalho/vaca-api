@@ -1,12 +1,12 @@
 import { Args, Context, Mutation, Resolver } from '@nestjs/graphql';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import { Public } from '../decorators/public.decorator';
 import {
    ActionResultObject,
+   AuthSessionResult,
    InviteAcceptanceStart,
    InviteEmailVerified,
-   InviteProfileCompleted,
 } from '../objects';
 import {
    CompleteInviteProfileArgs,
@@ -21,6 +21,8 @@ import { InviteUserService } from '../services/invite/invite-user.service';
 import { StartInviteAcceptanceService } from '../services/invite/start-invite-acceptance.service';
 import { VerifyInviteEmailCodeService } from '../services/invite/verify-invite-email-code.service';
 import type { AuthCurrentUser } from '../services/auth-context.service';
+import { extractRequestOrigin } from '../utils/auth-link.util';
+import { AuthSessionTransportResolverHelper } from './auth-session-transport.resolver-helper';
 
 @Resolver()
 export class AuthInviteResolver {
@@ -30,14 +32,18 @@ export class AuthInviteResolver {
       private readonly verifyInviteEmailCodeService: VerifyInviteEmailCodeService,
       private readonly consumeInviteMagicLinkService: ConsumeInviteMagicLinkService,
       private readonly completeInviteProfileService: CompleteInviteProfileService,
+      private readonly transport: AuthSessionTransportResolverHelper,
    ) {}
 
    @Mutation(() => ActionResultObject)
    async inviteUser(
       @CurrentUser() user: AuthCurrentUser,
       @Args() args: InviteUserArgs,
+      @Context() ctx: { req?: Request },
    ): Promise<ActionResultObject> {
-      return this.inviteUserService.run(user, args.data);
+      return this.inviteUserService.run(user, args.data, {
+         requestOrigin: extractRequestOrigin(ctx.req?.headers),
+      });
    }
 
    @Public()
@@ -46,10 +52,16 @@ export class AuthInviteResolver {
       @Args() args: StartInviteAcceptanceArgs,
       @Context() ctx: { req?: Request },
    ): Promise<InviteAcceptanceStart> {
-      return this.startInviteAcceptanceService.run(args.data, {
-         ip: ctx.req?.ip,
-         userAgent: ctx.req?.headers['user-agent'],
-      });
+      return this.startInviteAcceptanceService.run(
+         args.data,
+         {
+            ip: ctx.req?.ip,
+            userAgent: ctx.req?.headers['user-agent'],
+         },
+         {
+            requestOrigin: extractRequestOrigin(ctx.req?.headers),
+         },
+      );
    }
 
    @Public()
@@ -69,10 +81,15 @@ export class AuthInviteResolver {
    }
 
    @Public()
-   @Mutation(() => InviteProfileCompleted)
+   @Mutation(() => AuthSessionResult)
    async completeInviteProfile(
       @Args() args: CompleteInviteProfileArgs,
-   ): Promise<InviteProfileCompleted> {
-      return this.completeInviteProfileService.run(args.data);
+      @Context() ctx: { req?: Request; res?: Response },
+   ): Promise<AuthSessionResult> {
+      const result = await this.completeInviteProfileService.run(
+         args.data,
+         this.transport.extractMeta(ctx.req),
+      );
+      return this.transport.applySessionTransport(result, ctx.res);
    }
 }

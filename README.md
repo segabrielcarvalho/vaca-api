@@ -200,6 +200,7 @@ src/
 - `JWT_ACCESS_EXPIRES_IN`: Tempo de expiração do token de acesso
 - `JWT_REFRESH_SECRET`: Chave secreta para JWT de refresh
 - `JWT_REFRESH_EXPIRES_IN`: Tempo de expiração do token de refresh
+- Links de convite usam `BASE_WEB_URL` como URL pública do frontend
 
 ### Banco de Dados
 

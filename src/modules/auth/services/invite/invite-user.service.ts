@@ -7,6 +7,7 @@ import { ConflictException, Inject, Injectable } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import appConfig from '../../../app/app.config';
 import { renderHbsTemplate } from '../../../email/templates/render-hbs-template';
+import { getTemplateAssetBase64 } from '../../../email/templates/template-asset.util';
 import { PrismaService } from '../../../prisma/prisma.service';
 import authConfig from '../../auth.config';
 import { AUTH_EMAIL_SUBJECT } from '../../auth.constants';
@@ -17,8 +18,13 @@ import {
    createTokenHash,
    generateRandomToken,
 } from '../../utils/auth-crypto.util';
+import { buildAuthFrontendLink } from '../../utils/auth-link.util';
 import { AuthAuditService } from '../shared/auth-audit.service';
 import { AuthEmailQueueService } from '../shared/auth-email-queue.service';
+
+type InviteUserOptions = {
+   requestOrigin?: string;
+};
 
 @Injectable()
 export class InviteUserService {
@@ -35,6 +41,7 @@ export class InviteUserService {
    async run(
       actor: AuthCurrentUser,
       input: InviteUserInput,
+      options?: InviteUserOptions,
    ): Promise<ActionResultObject> {
       const email = input.email.trim().toLowerCase();
       const role: PrismaRoleEnum =
@@ -83,8 +90,15 @@ export class InviteUserService {
          },
       });
 
-      const inviteLinkBase = this.app.baseAdminUrl || this.app.baseWebUrl;
-      const inviteLink = `${inviteLinkBase.replace(/\/$/, '')}/auth/invite?token=${encodeURIComponent(rawToken)}`;
+      const inviteLink = buildAuthFrontendLink({
+         baseWebUrl: this.app.baseWebUrl,
+         requestOrigin: options?.requestOrigin,
+         path: '/auth/invite',
+         query: { token: rawToken },
+      });
+      const logoBase64 = getTemplateAssetBase64(
+         'logo-vaca-completa-branca.png',
+      );
 
       await this.emailQueueService.run({
          to: email,
@@ -92,6 +106,8 @@ export class InviteUserService {
          html: renderHbsTemplate('auth-invite', {
             inviteTtlHours: this.auth.invite.ttlHours,
             inviteLink,
+            appName: 'VACA',
+            logoBase64,
          }),
       });
 

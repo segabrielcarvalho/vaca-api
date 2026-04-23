@@ -1,5 +1,13 @@
 import { Field, InputType } from '@nestjs/graphql';
-import { IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
+import { AuthChannelEnum } from '../../graphql/@generated/prisma/auth-channel.enum';
+import {
+   IsEnum,
+   IsNotEmpty,
+   IsOptional,
+   IsString,
+   MaxLength,
+   MinLength,
+} from 'class-validator';
 
 @InputType()
 export class CompleteInviteProfileInput {
@@ -7,6 +15,21 @@ export class CompleteInviteProfileInput {
    @IsString()
    @IsNotEmpty()
    contextId!: string;
+
+   @Field(() => AuthChannelEnum)
+   @IsEnum(AuthChannelEnum)
+   channel!: AuthChannelEnum;
+
+   @Field()
+   @IsString()
+   @IsNotEmpty()
+   deviceId!: string;
+
+   @Field({ nullable: true })
+   @IsOptional()
+   @IsString()
+   @IsNotEmpty()
+   deviceName?: string;
 
    @Field()
    @IsString()

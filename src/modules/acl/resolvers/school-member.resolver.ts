@@ -1,6 +1,8 @@
-import { Args, Mutation, Query, Resolver } from '@nestjs/graphql';
+import { Args, Context, Mutation, Query, Resolver } from '@nestjs/graphql';
+import type { Request } from 'express';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { AuthCurrentUser } from '../../auth/services/auth-context.service';
+import { extractRequestOrigin } from '../../auth/utils/auth-link.util';
 import { GetSchoolMemberInput } from '../inputs/get-school-member.input';
 import { InviteSchoolMemberInput } from '../inputs/invite-school-member.input';
 import { ListAclRolesByScopeInput } from '../inputs/list-acl-roles-by-scope.input';
@@ -54,16 +56,22 @@ export class SchoolMemberResolver {
    async inviteSchoolMember(
       @CurrentUser() user: AuthCurrentUser,
       @Args('input') input: InviteSchoolMemberInput,
+      @Context() ctx: { req?: Request },
    ) {
-      return this.schoolMemberService.inviteSchoolMember(user, input);
+      return this.schoolMemberService.inviteSchoolMember(user, input, {
+         requestOrigin: extractRequestOrigin(ctx.req?.headers),
+      });
    }
 
    @Mutation(() => SchoolMemberInviteObject)
    async resendSchoolMemberInvite(
       @CurrentUser() user: AuthCurrentUser,
       @Args('input') input: ResendSchoolMemberInviteInput,
+      @Context() ctx: { req?: Request },
    ) {
-      return this.schoolMemberService.resendSchoolMemberInvite(user, input);
+      return this.schoolMemberService.resendSchoolMemberInvite(user, input, {
+         requestOrigin: extractRequestOrigin(ctx.req?.headers),
+      });
    }
 
    @Mutation(() => SchoolMemberInviteObject)

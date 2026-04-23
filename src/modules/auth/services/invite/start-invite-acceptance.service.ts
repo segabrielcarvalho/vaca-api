@@ -8,6 +8,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { ConfigType } from '@nestjs/config';
 import appConfig from '../../../app/app.config';
 import { renderHbsTemplate } from '../../../email/templates/render-hbs-template';
+import { getTemplateAssetBase64 } from '../../../email/templates/template-asset.util';
 import authConfig from '../../auth.config';
 import { AUTH_EMAIL_SUBJECT } from '../../auth.constants';
 import type { StartInviteAcceptanceInput } from '../../input';
@@ -18,11 +19,16 @@ import {
    generateRandomToken,
    maskEmail,
 } from '../../utils/auth-crypto.util';
+import { buildAuthFrontendLink } from '../../utils/auth-link.util';
 import { AuthAuditService } from '../shared/auth-audit.service';
 import { AuthChallengeService } from '../shared/auth-challenge.service';
 import { AuthEmailQueueService } from '../shared/auth-email-queue.service';
 import { GetActiveInviteByTokenService } from '../shared/get-active-invite-by-token.service';
 import type { RequestMeta } from '../auth-context.service';
+
+type StartInviteAcceptanceOptions = {
+   requestOrigin?: string;
+};
 
 @Injectable()
 export class StartInviteAcceptanceService {
@@ -40,6 +46,7 @@ export class StartInviteAcceptanceService {
    async run(
       input: StartInviteAcceptanceInput,
       meta?: RequestMeta,
+      options?: StartInviteAcceptanceOptions,
    ): Promise<InviteAcceptanceStart> {
       const invite = await this.getActiveInviteByTokenService.run(
          input.inviteToken,
@@ -70,8 +77,15 @@ export class StartInviteAcceptanceService {
          },
       });
 
-      const inviteVerifyLinkBase = this.app.baseAdminUrl || this.app.baseWebUrl;
-      const inviteVerifyLink = `${inviteVerifyLinkBase.replace(/\/$/, '')}/auth/invite/verify?token=${encodeURIComponent(magicToken)}`;
+      const inviteVerifyLink = buildAuthFrontendLink({
+         baseWebUrl: this.app.baseWebUrl,
+         requestOrigin: options?.requestOrigin,
+         path: '/auth/invite/verify',
+         query: { token: magicToken },
+      });
+      const logoBase64 = getTemplateAssetBase64(
+         'logo-vaca-completa-branca.png',
+      );
 
       await this.emailQueueService.run({
          to: invite.email,
@@ -80,6 +94,8 @@ export class StartInviteAcceptanceService {
             code,
             verifyLink: inviteVerifyLink,
             challengeTtlMinutes: this.auth.challenge.ttlMinutes,
+            appName: 'VACA',
+            logoBase64,
          }),
       });
 

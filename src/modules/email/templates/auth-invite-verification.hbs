@@ -1,26 +1,97 @@
 <div
-   style='background:#f6f7fb;padding:32px 12px;font-family:Arial,Helvetica,sans-serif;color:#111827;'
+   style='background:#ffffff;padding:0;font-family:Arial,Helvetica,sans-serif;color:#16202a;'
 >
-   <div
-      style='max-width:520px;margin:0 auto;background:#ffffff;border-radius:16px;padding:28px 26px;border:1px solid #e5e7eb;'
-   >
-      <h1 style='font-size:18px;margin:0 0 12px 0;'>Confirme seu convite</h1>
-      <p style='margin:0 0 16px 0;font-size:14px;color:#4b5563;'>Ola</p>
-      <p style='margin:0 0 12px 0;'>Seu codigo de confirmacao:
-         <strong>{{code}}</strong></p>
-      <p style='margin:0 0 16px 0;'>Voce pode usar o codigo ou clicar no link
-         magico abaixo.</p>
-      <div style='margin:0 0 12px 0;'>
-         <a
-            href='{{verifyLink}}'
-            style='display:inline-block;background:#111827;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:600;font-size:14px;'
-         >
-            Confirmar convite
-         </a>
+   <div style='width:100%;background:#1e2630;border-top:4px solid #facc15;'>
+      <div
+         style='max-width:540px;margin:0 auto;padding:26px 28px;text-align:center;'
+      >
+         {{#if logoBase64}}
+            <img
+               src='data:image/png;base64,{{{logoBase64}}}'
+               alt='VACA'
+               width='220'
+               style='display:inline-block;width:220px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none;'
+            />
+         {{else}}
+            <div
+               style='font-size:28px;font-weight:800;letter-spacing:0.08em;color:#ffffff;'
+            >
+               VACA
+            </div>
+         {{/if}}
       </div>
-      <p style='margin:12px 0 0 0;font-size:12px;color:#9ca3af;'>Codigo valido
-         por
-         {{challengeTtlMinutes}}
-         minutos.</p>
+   </div>
+
+   <div style='width:100%;background:#ffffff;'>
+      <div style='max-width:540px;margin:0 auto;padding:32px 28px 24px 28px;'>
+         <h1
+            style='font-size:30px;line-height:1.2;margin:0 0 12px 0;color:#16202a;font-weight:700;'
+         >
+            Confirme seu convite
+         </h1>
+
+         <p
+            style='margin:0 0 24px 0;font-size:15px;line-height:1.7;color:#52606d;'
+         >
+            Use o código abaixo para confirmar seu e-mail e continuar o
+            onboarding.
+         </p>
+
+         <div
+            style='margin:0 0 20px 0;background:#f7f9fb;padding:22px 16px;text-align:center;border-radius:4px;'
+         >
+            <span
+               style='display:inline-block;font-size:38px;font-weight:800;letter-spacing:8px;color:#16202a;'
+            >
+               {{code}}
+            </span>
+         </div>
+
+         <p
+            style='margin:0 0 24px 0;font-size:14px;line-height:1.6;color:#52606d;'
+         >
+            Código válido por
+            {{challengeTtlMinutes}}
+            minutos.
+         </p>
+
+         <p
+            style='margin:0 0 12px 0;font-size:14px;line-height:1.6;color:#52606d;'
+         >
+            Se preferir, você também pode confirmar pelo link mágico:
+         </p>
+
+         <div style='margin:0 0 20px 0;'>
+            <a
+               href='{{verifyLink}}'
+               style='display:inline-block;background:#16202a;color:#ffffff;text-decoration:none;padding:13px 20px;font-weight:700;font-size:14px;border-radius:6px;'
+            >
+               Confirmar convite
+            </a>
+         </div>
+
+         <p
+            style='margin:0;font-size:12px;line-height:1.7;color:#667789;word-break:break-all;'
+         >
+            Caso o botão não funcione, copie e cole este link no navegador:
+            <a
+               href='{{verifyLink}}'
+               style='color:#0f5ea8;text-decoration:underline;'
+            >{{verifyLink}}</a>
+         </p>
+      </div>
+   </div>
+
+   <div style='width:100%;background:#ffffff;border-top:1px solid #d8e1e8;'>
+      <div style='max-width:540px;margin:0 auto;padding:18px 28px 24px 28px;'>
+         <p style='margin:0;font-size:12px;line-height:1.5;color:#667789;'>
+            Se você não esperava esse convite, ignore este e-mail.
+         </p>
+         <p
+            style='margin:8px 0 0 0;font-size:12px;line-height:1.5;color:#667789;'
+         >
+            {{appName}}
+         </p>
+      </div>
    </div>
 </div>
