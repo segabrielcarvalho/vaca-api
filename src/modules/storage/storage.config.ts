@@ -59,11 +59,11 @@ export const storageConfigValidation = z
                : StorageEnvironmentEnum.Cloud,
          ),
       STORAGE_BUCKET: z.string().default('ad-fusion'),
-      STORAGE_ENDPOINT: z.string().url().default('http://localhost:4566'),
+      STORAGE_ENDPOINT: z.string().url().default('http://localhost:15002'),
       STORAGE_CLOUD_FRONT_URL: z
          .string()
          .url()
-         .default('http://localhost:4566'),
+         .default('http://localhost:15002'),
       STORAGE_REGION: z.string().optional(),
       AWS_ACCESS_KEY_ID: z.string().optional(),
       AWS_SECRET_ACCESS_KEY: z.string().optional(),

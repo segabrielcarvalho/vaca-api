@@ -72,6 +72,19 @@ function clamp(value: number, min: number, max: number): number {
    return Math.min(Math.max(value, min), max);
 }
 
+function resolveVisualDimension(
+   providedValue: unknown,
+   computedValue: number,
+   min: number,
+   max: number,
+): number {
+   return clamp(
+      Math.max(asNumber(providedValue, computedValue), computedValue),
+      min,
+      max,
+   );
+}
+
 @Injectable()
 export class OmrTemplateRulesService {
    parseLayoutJson(input: string): ParsedLayout {
@@ -155,12 +168,14 @@ export class OmrTemplateRulesService {
          registrationGridWidthMm + REGISTRATION_PREVIEW_EXTRA_WIDTH_MM;
       const registrationRenderHeightMm =
          registrationGridHeightMm + REGISTRATION_PREVIEW_EXTRA_HEIGHT_MM;
-      const registrationWidthMm = clamp(
+      const registrationWidthMm = resolveVisualDimension(
+         registrationBlock.widthMm,
          registrationRenderWidthMm,
          10,
          pageWidthMm - SAFE_MARGIN_MM * 2,
       );
-      const registrationHeightMm = clamp(
+      const registrationHeightMm = resolveVisualDimension(
+         registrationBlock.heightMm,
          registrationRenderHeightMm,
          8,
          pageHeightMm - SAFE_MARGIN_MM * 2,
@@ -239,12 +254,14 @@ export class OmrTemplateRulesService {
          blockRows * questionBlockWithHeaderHeightMm +
          (blockRows - 1) * QUESTION_BLOCK_ROW_GAP_MM +
          QUESTION_PREVIEW_EXTRA_HEIGHT_MM;
-      const questionsWidthMm = clamp(
+      const questionsWidthMm = resolveVisualDimension(
+         questionBlock.widthMm,
          questionsRenderWidthMm,
          10,
          pageWidthMm - SAFE_MARGIN_MM * 2,
       );
-      const questionsHeightMm = clamp(
+      const questionsHeightMm = resolveVisualDimension(
+         questionBlock.heightMm,
          questionsRenderHeightMm,
          8,
          pageHeightMm - SAFE_MARGIN_MM * 2,

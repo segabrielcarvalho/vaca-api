@@ -8,15 +8,47 @@ import {
    type RGB,
 } from 'pdf-lib';
 import { getArucoMarkerPngById } from './aruco-marker-assets.util';
+import {
+   EDITOR_BLOCK_PADDING_PX,
+   EDITOR_HEADER_CREATE_FONT_SIZE_PX,
+   EDITOR_LINE_HEIGHT_RATIO,
+   EDITOR_MARKDOWN_FONT_SIZE_PX,
+   EDITOR_QUESTION_HEADER_FONT_SIZE_PX,
+   EDITOR_QUESTION_LABEL_FONT_SIZE_PX,
+   editorCssPxToPdfPt,
+   editorCssPtToPdfPt,
+   editorPxToPdfPt,
+   mmToPt,
+   resolveBubbleLabelBaselineY,
+   resolveEditorTextBox,
+   resolveQuestionHeaderBaselineY,
+   resolveQuestionLabelXmm,
+   resolveStructuredHeaderLayout,
+   resolveTextBaselineYForCenteredLine,
+   resolveTextBaselineYForTopLine,
+   toPdfRect,
+} from './pdf-canvas-render-metrics.util';
 import { getRegistrationRenderMetrics } from './registration-render-metrics.util';
 
-const MM_TO_PT = 72 / 25.4;
 const DEFAULT_PAGE_WIDTH_MM = 210;
 const DEFAULT_PAGE_HEIGHT_MM = 297;
-const OMR_NUMBER_FONT_SIZE_PT = 8.2;
-const OMR_QUESTION_HEADER_FONT_SIZE_PT = OMR_NUMBER_FONT_SIZE_PT + 1;
+const TITLE_LINE_HEIGHT_RATIO = 1.15;
+const OMR_NUMBER_FONT_SIZE_PT = editorCssPxToPdfPt(
+   EDITOR_QUESTION_LABEL_FONT_SIZE_PX,
+);
+const OMR_QUESTION_HEADER_FONT_SIZE_PT = editorCssPxToPdfPt(
+   EDITOR_QUESTION_HEADER_FONT_SIZE_PX,
+);
+const OMR_MARKDOWN_FONT_SIZE_PT = editorCssPxToPdfPt(
+   EDITOR_MARKDOWN_FONT_SIZE_PX,
+);
+const OMR_MARKDOWN_LINE_HEIGHT_PT =
+   OMR_MARKDOWN_FONT_SIZE_PT * EDITOR_LINE_HEIGHT_RATIO;
+const OMR_HEADER_FONT_SIZE_PT = editorCssPxToPdfPt(
+   EDITOR_HEADER_CREATE_FONT_SIZE_PX,
+);
+const OMR_HEADER_CELL_PADDING_PT = editorPxToPdfPt(6);
 const OMR_NUMBER_COLOR = rgb(0.09, 0.13, 0.22);
-const OMR_NUMBER_BASELINE_OFFSET_PT = 2.5;
 
 type JsonObject = Record<string, unknown>;
 
@@ -47,24 +79,6 @@ function asString(value: unknown): string | null {
    if (typeof value !== 'string') return null;
    const trimmed = value.trim();
    return trimmed.length > 0 ? trimmed : null;
-}
-
-function mmToPt(valueMm: number): number {
-   return valueMm * MM_TO_PT;
-}
-
-function toPdfRect(
-   pageHeightPt: number,
-   xMm: number,
-   yMm: number,
-   widthMm: number,
-   heightMm: number,
-) {
-   const x = mmToPt(xMm);
-   const y = pageHeightPt - mmToPt(yMm) - mmToPt(heightMm);
-   const width = mmToPt(widthMm);
-   const height = mmToPt(heightMm);
-   return { x, y, width, height };
 }
 
 function parseHexColor(input: string | null | undefined, fallback: RGB): RGB {
@@ -136,6 +150,7 @@ function drawWrappedText(input: {
    fontSize: number;
    color: RGB;
    lineHeight?: number;
+   maxLines?: number;
 }) {
    const { page, text, rect, font, fontSize, color } = input;
    const lineHeight = input.lineHeight ?? fontSize * 1.2;
@@ -166,11 +181,20 @@ function drawWrappedText(input: {
       if (current) lines.push(current);
    });
 
-   const maxLines = Math.max(1, Math.floor(rect.height / lineHeight));
+   const maxLines = Math.min(
+      input.maxLines ?? Number.POSITIVE_INFINITY,
+      Math.max(1, Math.floor(rect.height / lineHeight)),
+   );
    const visible = lines.slice(0, maxLines);
 
    visible.forEach((line, index) => {
-      const y = rect.y + rect.height - fontSize - index * lineHeight;
+      const y =
+         resolveTextBaselineYForTopLine(
+            rect,
+            fontSize,
+            lineHeight / Math.max(fontSize, 1),
+         ) -
+         index * lineHeight;
       if (y < rect.y) return;
       page.drawText(line, {
          x: rect.x,
@@ -342,18 +366,19 @@ export class OmrTemplatePdfRendererService {
       const rawValue = asString(title.value) ?? fallbackTemplateName;
       const uppercase = Boolean(style.uppercase);
       const text = uppercase ? rawValue.toUpperCase() : rawValue;
-      const fontSizePt = asNumber(style.fontSizePt, 16);
+      const fontSizePt = editorCssPtToPdfPt(asNumber(style.fontSizePt, 16));
       const align = asString(style.textAlign) ?? 'left';
       const isBold = (asString(style.fontWeight) ?? 'bold') !== 'normal';
       const font = isBold ? fontBold : fontRegular;
 
-      const rect = toPdfRect(
+      const rect = resolveEditorTextBox({
          pageHeightPt,
-         asNumber(title.xMm, 20),
-         asNumber(title.yMm, 8),
-         asNumber(title.widthMm, 170),
-         asNumber(title.heightMm, 10),
-      );
+         xMm: asNumber(title.xMm, 20),
+         yMm: asNumber(title.yMm, 8),
+         widthMm: asNumber(title.widthMm, 170),
+         heightMm: asNumber(title.heightMm, 10),
+         paddingPx: EDITOR_BLOCK_PADDING_PX,
+      });
 
       const textWidth = font.widthOfTextAtSize(text, fontSizePt);
       const x =
@@ -362,7 +387,11 @@ export class OmrTemplatePdfRendererService {
             : align === 'right'
               ? rect.x + rect.width - textWidth
               : rect.x;
-      const y = rect.y + Math.max(0, (rect.height - fontSizePt) / 2);
+      const y = resolveTextBaselineYForTopLine(
+         rect,
+         fontSizePt,
+         TITLE_LINE_HEIGHT_RATIO,
+      );
 
       page.drawText(text, {
          x,
@@ -415,10 +444,10 @@ export class OmrTemplatePdfRendererService {
          });
       }
 
-      const rowHeights = [0.22, 0.195, 0.195, 0.195, 0.195].map(
-         (ratio) => rect.height * ratio,
+      const headerLayout = resolveStructuredHeaderLayout(
+         rect,
+         OMR_HEADER_FONT_SIZE_PT,
       );
-      let cursorTop = rect.y + rect.height;
 
       const fields = new Map<string, { label: string; enabled: boolean }>();
       asArray(structured.fields).forEach((item) => {
@@ -432,47 +461,60 @@ export class OmrTemplatePdfRendererService {
       });
 
       const drawCell = (
-         x: number,
-         y: number,
-         width: number,
-         height: number,
+         cell: { x: number; y: number; width: number; height: number },
          key: string,
       ) => {
          const field = fields.get(key);
          if (!field?.enabled) return;
-         page.drawText(`${field.label}`, {
-            x: x + 3,
-            y: y + Math.max(2, height / 2 - 4.5),
-            size: 8.5,
+         const baselineY = resolveTextBaselineYForCenteredLine(
+            cell.y + cell.height / 2,
+            OMR_HEADER_FONT_SIZE_PT,
+         );
+         page.drawText(`${field.label}:`, {
+            x: cell.x + OMR_HEADER_CELL_PADDING_PT,
+            y: baselineY,
+            size: OMR_HEADER_FONT_SIZE_PT,
             font: fontRegular,
             color: rgb(0.1, 0.1, 0.1),
          });
 
          if (key === 'date') {
+            const labelWidth = fontRegular.widthOfTextAtSize(
+               `${field.label}:`,
+               OMR_HEADER_FONT_SIZE_PT,
+            );
             page.drawText('____/____/______', {
-               x: x + Math.min(width - 52, 52),
-               y: y + Math.max(2, height / 2 - 4.5),
-               size: 8.2,
+               x: Math.min(
+                  cell.x +
+                     OMR_HEADER_CELL_PADDING_PT +
+                     labelWidth +
+                     editorPxToPdfPt(4),
+                  cell.x +
+                     Math.max(
+                        OMR_HEADER_CELL_PADDING_PT,
+                        cell.width - mmToPt(34),
+                     ),
+               ),
+               y: baselineY,
+               size: OMR_HEADER_FONT_SIZE_PT,
                font: fontBold,
                color: rgb(0.15, 0.15, 0.15),
             });
          }
       };
 
-      const bannerHeight = rowHeights[0] ?? rect.height * 0.2;
-      cursorTop -= bannerHeight;
       if (bannerEnabled) {
          page.drawRectangle({
-            x: rect.x,
-            y: cursorTop,
-            width: rect.width,
-            height: bannerHeight,
+            x: headerLayout.rows.banner.x,
+            y: headerLayout.rows.banner.y,
+            width: headerLayout.rows.banner.width,
+            height: headerLayout.rows.banner.height,
             color: topBarBg,
          });
          page.drawText(asString(structured.bannerText) ?? '', {
-            x: rect.x + 3,
-            y: cursorTop + Math.max(2, bannerHeight / 2 - 4.2),
-            size: 8.5,
+            x: rect.x + OMR_HEADER_CELL_PADDING_PT,
+            y: headerLayout.bannerTextBaselineY,
+            size: OMR_HEADER_FONT_SIZE_PT,
             font: fontBold,
             color: topBarText,
          });
@@ -488,53 +530,64 @@ export class OmrTemplatePdfRendererService {
          });
       };
 
-      drawRowBorder(cursorTop);
+      drawRowBorder(headerLayout.rows.banner.y);
 
-      const row1 = rowHeights[1] ?? rect.height * 0.2;
-      cursorTop -= row1;
-      drawCell(rect.x, cursorTop, rect.width, row1, 'discipline');
-      drawRowBorder(cursorTop);
+      drawCell(headerLayout.rows.discipline, 'discipline');
+      drawRowBorder(headerLayout.rows.discipline.y);
 
-      const row2 = rowHeights[2] ?? rect.height * 0.2;
-      cursorTop -= row2;
-      const leftW = rect.width * 0.62;
-      const rightW = rect.width - leftW;
-      drawCell(rect.x, cursorTop, leftW, row2, 'professor');
-      drawCell(rect.x + leftW, cursorTop, rightW, row2, 'date');
+      drawCell(headerLayout.professorDate.professor, 'professor');
+      drawCell(headerLayout.professorDate.date, 'date');
       if (showBorders) {
          page.drawLine({
-            start: { x: rect.x + leftW, y: cursorTop },
-            end: { x: rect.x + leftW, y: cursorTop + row2 },
+            start: {
+               x: headerLayout.professorDate.date.x,
+               y: headerLayout.rows.professorDate.y,
+            },
+            end: {
+               x: headerLayout.professorDate.date.x,
+               y:
+                  headerLayout.rows.professorDate.y +
+                  headerLayout.rows.professorDate.height,
+            },
             thickness: 0.7,
             color: rgb(0.2, 0.2, 0.2),
          });
       }
-      drawRowBorder(cursorTop);
+      drawRowBorder(headerLayout.rows.professorDate.y);
 
-      const row3 = rowHeights[3] ?? rect.height * 0.2;
-      cursorTop -= row3;
-      drawCell(rect.x, cursorTop, rect.width, row3, 'studentName');
-      drawRowBorder(cursorTop);
+      drawCell(headerLayout.rows.studentName, 'studentName');
+      drawRowBorder(headerLayout.rows.studentName.y);
 
-      const row4 = rowHeights[4] ?? rect.height * 0.2;
-      cursorTop -= row4;
-      const w1 = rect.width * 0.5;
-      const w2 = rect.width * 0.25;
-      const w3 = rect.width - w1 - w2;
-      drawCell(rect.x, cursorTop, w1, row4, 'assessmentName');
-      drawCell(rect.x + w1, cursorTop, w2, row4, 'grade');
-      drawCell(rect.x + w1 + w2, cursorTop, w3, row4, 'signature');
+      drawCell(headerLayout.assessment.assessmentName, 'assessmentName');
+      drawCell(headerLayout.assessment.grade, 'grade');
+      drawCell(headerLayout.assessment.signature, 'signature');
 
       if (showBorders) {
          page.drawLine({
-            start: { x: rect.x + w1, y: cursorTop },
-            end: { x: rect.x + w1, y: cursorTop + row4 },
+            start: {
+               x: headerLayout.assessment.grade.x,
+               y: headerLayout.rows.assessment.y,
+            },
+            end: {
+               x: headerLayout.assessment.grade.x,
+               y:
+                  headerLayout.rows.assessment.y +
+                  headerLayout.rows.assessment.height,
+            },
             thickness: 0.7,
             color: rgb(0.2, 0.2, 0.2),
          });
          page.drawLine({
-            start: { x: rect.x + w1 + w2, y: cursorTop },
-            end: { x: rect.x + w1 + w2, y: cursorTop + row4 },
+            start: {
+               x: headerLayout.assessment.signature.x,
+               y: headerLayout.rows.assessment.y,
+            },
+            end: {
+               x: headerLayout.assessment.signature.x,
+               y:
+                  headerLayout.rows.assessment.y +
+                  headerLayout.rows.assessment.height,
+            },
             thickness: 0.7,
             color: rgb(0.2, 0.2, 0.2),
          });
@@ -615,10 +668,11 @@ export class OmrTemplatePdfRendererService {
       for (const rowLabel of metrics.rowLabels) {
          page.drawText(rowLabel.text, {
             x: mmToPt(rowLabel.xMm),
-            y:
-               pageHeightPt -
-               mmToPt(rowLabel.yCenterMm) -
-               OMR_NUMBER_BASELINE_OFFSET_PT,
+            y: resolveBubbleLabelBaselineY(
+               pageHeightPt,
+               rowLabel.yCenterMm,
+               OMR_NUMBER_FONT_SIZE_PT,
+            ),
             size: OMR_NUMBER_FONT_SIZE_PT,
             font: fontBold,
             color: OMR_NUMBER_COLOR,
@@ -706,16 +760,23 @@ export class OmrTemplatePdfRendererService {
                (questionBlockWithHeaderHeightMm + questionBlockRowGapMm);
 
          safeAlternatives.forEach((option, optionIdx) => {
-            const x = mmToPt(
+            const centerX = mmToPt(
                blockOriginXmm +
                   questionLabelGutterMm +
                   optionIdx * optionGapMm +
                   bubbleDiameterMm / 2,
             );
-            const y =
-               pageHeightPt - mmToPt(blockOriginYmm + headerBandMm * 0.2) - 5;
+            const textWidth = fontBold.widthOfTextAtSize(
+               option,
+               OMR_QUESTION_HEADER_FONT_SIZE_PT,
+            );
+            const y = resolveQuestionHeaderBaselineY(
+               pageHeightPt,
+               blockOriginYmm,
+               OMR_QUESTION_HEADER_FONT_SIZE_PT,
+            );
             page.drawText(option, {
-               x: x - 2,
+               x: centerX - textWidth / 2,
                y,
                size: OMR_QUESTION_HEADER_FONT_SIZE_PT,
                font: fontBold,
@@ -736,7 +797,7 @@ export class OmrTemplatePdfRendererService {
             blockRow *
                (questionBlockWithHeaderHeightMm + questionBlockRowGapMm);
 
-         const numberXmm = blockOriginXmm + questionLabelGutterMm / 2 - 1.5;
+         const numberXmm = resolveQuestionLabelXmm(blockOriginXmm);
          const numberYmm =
             blockOriginYmm +
             headerBandMm +
@@ -745,7 +806,11 @@ export class OmrTemplatePdfRendererService {
 
          page.drawText(String(questionNumber), {
             x: mmToPt(numberXmm),
-            y: pageHeightPt - mmToPt(numberYmm) - OMR_NUMBER_BASELINE_OFFSET_PT,
+            y: resolveBubbleLabelBaselineY(
+               pageHeightPt,
+               numberYmm,
+               OMR_NUMBER_FONT_SIZE_PT,
+            ),
             size: OMR_NUMBER_FONT_SIZE_PT,
             font: fontBold,
             color: OMR_NUMBER_COLOR,
@@ -786,25 +851,23 @@ export class OmrTemplatePdfRendererService {
          const text = markdownToPlainText(asString(block.value) ?? '');
          if (!text) return;
 
-         const rect = toPdfRect(
+         const rect = resolveEditorTextBox({
             pageHeightPt,
-            asNumber(block.xMm, 20),
-            asNumber(block.yMm, 240),
-            asNumber(block.widthMm, 80),
-            asNumber(block.heightMm, 18),
-         );
+            xMm: asNumber(block.xMm, 20),
+            yMm: asNumber(block.yMm, 240),
+            widthMm: asNumber(block.widthMm, 80),
+            heightMm: asNumber(block.heightMm, 18),
+            paddingPx: EDITOR_BLOCK_PADDING_PX,
+         });
 
          drawWrappedText({
             page,
             text,
-            rect: {
-               x: rect.x + 1,
-               y: rect.y + 1,
-               width: rect.width - 2,
-               height: rect.height - 2,
-            },
+            rect,
             font: fontRegular,
-            fontSize: 8.4,
+            fontSize: OMR_MARKDOWN_FONT_SIZE_PT,
+            lineHeight: OMR_MARKDOWN_LINE_HEIGHT_PT,
+            maxLines: blockName === 'instructions' ? 3 : 2,
             color: rgb(0.26, 0.3, 0.4),
          });
       };
