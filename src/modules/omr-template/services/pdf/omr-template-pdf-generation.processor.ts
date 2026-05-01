@@ -12,6 +12,7 @@ import type IS3Provider from '../../../storage/providers/s3/s3.interface';
 import type { OmrTemplatePdfJobPayload } from '../../objects/omr-template-pdf-job-payload.object';
 import { OmrTemplateRulesService } from '../shared/omr-template-rules.service';
 import { OmrTemplatePdfRendererService } from './omr-template-pdf-renderer.service';
+import { buildTemplatePdfStorageKey } from './template-pdf-storage-key.util';
 
 @Processor(QUEUES.OMR_TEMPLATE_PDF)
 @Injectable()
@@ -88,8 +89,18 @@ export class OmrTemplatePdfGenerationProcessor extends WorkerHost {
          });
 
          const folder = `omr/templates/${asset.TemplateVersion.Template.id}/v${asset.TemplateVersion.version}/pdf/g${asset.generationIndex}`;
+         const pdfStorageKey = buildTemplatePdfStorageKey({
+            templateId: asset.TemplateVersion.Template.id,
+            version: asset.TemplateVersion.version,
+            generationIndex: asset.generationIndex,
+            templateName: asset.TemplateVersion.Template.name,
+         });
          const [pdfPath, previewImagePath] = await Promise.all([
-            this.storage.saveFileFromBuffer(rendered.pdfBuffer, folder),
+            this.storage.saveFileFromBufferAtKey(
+               rendered.pdfBuffer,
+               pdfStorageKey,
+               'application/pdf',
+            ),
             rendered.previewImageBuffer
                ? this.storage.saveFileFromBuffer(
                     rendered.previewImageBuffer,
