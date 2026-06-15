@@ -226,6 +226,7 @@ export class CorrectionOmrProcessor extends WorkerHost {
                   masterAnswers,
                   threshold,
                   delta,
+                  includeImages: false,
                }),
                signal: controller.signal,
             });
@@ -309,7 +310,7 @@ export class CorrectionOmrProcessor extends WorkerHost {
          const detectionPayload = this.toJson({
             timings: omrResponse.timings ?? null,
          });
-         const omrPayload = this.toJson(omrResponse);
+         const omrPayload = this.toPersistedOmrPayload(omrResponse);
 
          const overlayImagePath = await this.saveReviewPreviewArtifact({
             captureId,
@@ -1101,6 +1102,15 @@ export class CorrectionOmrProcessor extends WorkerHost {
 
    private toJson(value: unknown): Prisma.InputJsonValue {
       return JSON.parse(JSON.stringify(value ?? null)) as Prisma.InputJsonValue;
+   }
+
+   private toPersistedOmrPayload(
+      response: OmrProcessResponse,
+   ): Prisma.InputJsonValue {
+      const { images, ...payload } = response;
+      void images;
+
+      return this.toJson(payload);
    }
 
    private trace(event: string, meta?: Record<string, unknown>) {

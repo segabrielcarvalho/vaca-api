@@ -158,6 +158,7 @@ describe('CorrectionOmrProcessor', () => {
          (global.fetch as jest.Mock).mock.calls[0][1].body as string,
       );
       expect(omrRequest.masterAnswers).toEqual([1, 3]);
+      expect(omrRequest.includeImages).toBe(false);
 
       expect(
          correctionExamActivation.upsertOfficialCorrection,
@@ -918,5 +919,14 @@ describe('CorrectionOmrProcessor', () => {
          ],
          source: 'correction_omr',
       });
+      expect(tx.correctionCapture.update).toHaveBeenCalledWith(
+         expect.objectContaining({
+            data: expect.objectContaining({
+               omrPayload: expect.not.objectContaining({
+                  images: expect.anything(),
+               }),
+            }),
+         }),
+      );
    });
 });
