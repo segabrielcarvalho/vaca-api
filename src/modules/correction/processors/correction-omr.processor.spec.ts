@@ -607,6 +607,116 @@ describe('CorrectionOmrProcessor', () => {
       expect(logger.debug).not.toHaveBeenCalled();
    });
 
+   it('registra timeout quando a comunicação com o OMR é abortada', async () => {
+      jest.spyOn(Date, 'now').mockReturnValue(1000);
+
+      const prisma = {
+         correctionCapture: {
+            findUnique: jest.fn().mockResolvedValue({
+               id: 'capture-1',
+               createdAt: new Date('2026-03-12T18:00:00.000Z'),
+               examId: 'exam-1',
+               originalImagePath: 'original/path.jpg',
+               Exam: {
+                  Klass: {
+                     Course: {
+                        schoolId: 'school-1',
+                     },
+                  },
+                  TemplateVersion: {
+                     compiledGeometryJson: { version: 1 },
+                  },
+                  Questions: [],
+               },
+            }),
+            update: jest.fn().mockResolvedValue(undefined),
+         },
+      };
+
+      const publisher = {
+         publish: jest.fn().mockResolvedValue(undefined),
+      };
+      const metrics = {
+         refreshSessionMetrics: jest.fn().mockResolvedValue(undefined),
+      };
+      const storage = {
+         downloadFileAsBuffer: jest
+            .fn()
+            .mockResolvedValue(Buffer.from('image-bytes')),
+         saveFileFromBufferAtKey: jest.fn().mockResolvedValue(undefined),
+         deleteFile: jest.fn().mockResolvedValue(undefined),
+      };
+      const abortError = Object.assign(
+         new Error('This operation was aborted'),
+         { name: 'AbortError' },
+      );
+
+      global.fetch = jest.fn().mockRejectedValue(abortError) as typeof fetch;
+
+      const processor = new CorrectionOmrProcessor(
+         prisma as never,
+         logger as never,
+         publisher as never,
+         { upsertOfficialCorrection: jest.fn() } as never,
+         { cleanupReplacedCaptureArtifacts: jest.fn() } as never,
+         metrics as never,
+         storage as never,
+         {
+            omrBaseUrl: 'http://omr.local',
+            omrRequestTimeoutMs: 1000,
+            debugTrace: false,
+         } as never,
+      );
+
+      await processor.process({
+         id: 'job-1',
+         data: {
+            captureId: 'capture-1',
+            sessionId: 'session-1',
+            threshold: 0.5,
+            delta: 0.12,
+         },
+      } as never);
+
+      expect(logger.log).toHaveBeenCalledWith(
+         JSON.stringify({
+            event: 'correction_omr.omr_request_failed',
+            jobId: 'job-1',
+            captureId: 'capture-1',
+            sessionId: 'session-1',
+            errorName: 'AbortError',
+            errorMessage: 'This operation was aborted',
+            timedOut: true,
+            timeoutMs: 1000,
+         }),
+      );
+      expect(prisma.correctionCapture.update).toHaveBeenLastCalledWith({
+         where: { id: 'capture-1' },
+         data: {
+            status: 'error',
+            reviewReasons: ['omr_error'],
+            errorMessage: 'Falha de comunicação com o motor OMR.',
+            processingMs: 0,
+            detectionPayload: {
+               error: 'This operation was aborted',
+            },
+         },
+      });
+      expect(publisher.publish).toHaveBeenCalledWith(
+         expect.objectContaining({
+            sessionId: 'session-1',
+            captureId: 'capture-1',
+            stage: CorrectionEventStageEnum.CAPTURE_ERROR,
+            payload: expect.objectContaining({
+               captureId: 'capture-1',
+               errorMessage: 'Falha de comunicação com o motor OMR.',
+               error: 'This operation was aborted',
+            }),
+         }),
+      );
+      expect(logger.debug).not.toHaveBeenCalled();
+   });
+
    it('não emite debug durante o processamento', async () => {
       const prisma = {
          correctionCapture: {

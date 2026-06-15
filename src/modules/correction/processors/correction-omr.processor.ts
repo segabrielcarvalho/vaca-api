@@ -178,6 +178,7 @@ export class CorrectionOmrProcessor extends WorkerHost {
          const masterAnswers = capture.Exam.Questions.map((question) =>
             Number.isInteger(question.correct) ? question.correct : null,
          );
+         const omrEndpoint = `${this.config.omrBaseUrl.replace(/\/$/, '')}/api/v2/omr/process`;
          this.trace('correction_omr.omr_request_started', {
             jobId: job.id,
             captureId,
@@ -185,39 +186,64 @@ export class CorrectionOmrProcessor extends WorkerHost {
             threshold,
             delta,
             questionCount: capture.Exam.Questions.length,
+            timeoutMs: this.config.omrRequestTimeoutMs,
+            omrEndpoint,
+            originalImageBytes: originalBuffer.byteLength,
+         });
+         this.operationalLog('correction_omr.omr_request_started', {
+            jobId: job.id,
+            captureId,
+            sessionId,
+            questionCount: capture.Exam.Questions.length,
+            timeoutMs: this.config.omrRequestTimeoutMs,
+            omrEndpoint,
+            originalImageBytes: originalBuffer.byteLength,
          });
          const controller = new AbortController();
+         const requestStartedAtMs = Date.now();
          const timeout = setTimeout(() => {
             controller.abort();
          }, this.config.omrRequestTimeoutMs);
 
          try {
-            const response = await fetch(
-               `${this.config.omrBaseUrl.replace(/\/$/, '')}/api/v2/omr/process`,
-               {
-                  method: 'POST',
-                  headers: {
-                     'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                     captureId,
-                     sessionId,
-                     imageBase64: originalBuffer.toString('base64'),
-                     compiledGeometryJson:
-                        capture.Exam.TemplateVersion.compiledGeometryJson,
-                     masterAnswers,
-                     threshold,
-                     delta,
-                  }),
-                  signal: controller.signal,
+            const response = await fetch(omrEndpoint, {
+               method: 'POST',
+               headers: {
+                  'Content-Type': 'application/json',
                },
-            );
+               body: JSON.stringify({
+                  captureId,
+                  sessionId,
+                  imageBase64: originalBuffer.toString('base64'),
+                  compiledGeometryJson:
+                     capture.Exam.TemplateVersion.compiledGeometryJson,
+                  masterAnswers,
+                  threshold,
+                  delta,
+               }),
+               signal: controller.signal,
+            });
+            const httpDurationMs = Math.max(0, Date.now() - requestStartedAtMs);
+
+            this.operationalLog('correction_omr.omr_http_response', {
+               jobId: job.id,
+               captureId,
+               sessionId,
+               status: response.status,
+               ok: response.ok,
+               durationMs: httpDurationMs,
+               timeoutMs: this.config.omrRequestTimeoutMs,
+            });
 
             if (!response.ok) {
                throw new Error(`OMR retornou HTTP ${response.status}.`);
             }
 
             omrResponse = (await response.json()) as OmrProcessResponse;
+            const responseDurationMs = Math.max(
+               0,
+               Date.now() - requestStartedAtMs,
+            );
             this.trace('correction_omr.omr_response_received', {
                jobId: job.id,
                captureId,
@@ -230,11 +256,39 @@ export class CorrectionOmrProcessor extends WorkerHost {
                   : Array.isArray(omrResponse.answers_numeric)
                     ? omrResponse.answers_numeric.length
                     : 0,
+               requestDurationMs: responseDurationMs,
+               omrTotalMs: omrResponse.timings?.totalMs ?? null,
+            });
+            this.operationalLog('correction_omr.omr_response_received', {
+               jobId: job.id,
+               captureId,
+               sessionId,
+               success: omrResponse.success ?? false,
+               engineVersion: omrResponse.engineVersion ?? 'unknown',
+               registrationStatus: omrResponse.registration?.status ?? null,
+               answersCount: Array.isArray(omrResponse.answers)
+                  ? omrResponse.answers.length
+                  : Array.isArray(omrResponse.answers_numeric)
+                    ? omrResponse.answers_numeric.length
+                    : 0,
+               requestDurationMs: responseDurationMs,
+               omrTotalMs: omrResponse.timings?.totalMs ?? null,
             });
          } finally {
             clearTimeout(timeout);
          }
       } catch (error) {
+         this.operationalLog('correction_omr.omr_request_failed', {
+            jobId: job.id,
+            captureId,
+            sessionId,
+            errorName: (error as Error).name,
+            errorMessage: (error as Error).message,
+            timedOut:
+               (error as Error).name === 'AbortError' ||
+               (error as Error).message === 'This operation was aborted',
+            timeoutMs: this.config.omrRequestTimeoutMs,
+         });
          await this.markError({
             captureId,
             sessionId,
@@ -1015,8 +1069,11 @@ export class CorrectionOmrProcessor extends WorkerHost {
    }
 
    private trace(event: string, meta?: Record<string, unknown>) {
-      void event;
-      void meta;
+      if (!this.config.debugTrace) return;
+      this.operationalLog(event, {
+         trace: true,
+         ...(meta ?? {}),
+      });
    }
 
    private operationalLog(event: string, meta?: Record<string, unknown>) {
