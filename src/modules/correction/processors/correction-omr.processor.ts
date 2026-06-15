@@ -45,7 +45,7 @@ type OmrProcessResponse = {
    };
 };
 
-const OMR_MAX_IMAGE_DIMENSION_PX = 2000;
+const OMR_MAX_IMAGE_DIMENSION_PX = 1400;
 
 @Processor(QUEUES.CORRECTION_OMR)
 @Injectable()
