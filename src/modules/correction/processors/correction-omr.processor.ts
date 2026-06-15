@@ -45,6 +45,8 @@ type OmrProcessResponse = {
    };
 };
 
+const OMR_MAX_IMAGE_DIMENSION_PX = 2000;
+
 @Processor(QUEUES.CORRECTION_OMR)
 @Injectable()
 export class CorrectionOmrProcessor extends WorkerHost {
@@ -175,6 +177,8 @@ export class CorrectionOmrProcessor extends WorkerHost {
 
       let omrResponse: OmrProcessResponse;
       try {
+         const omrImageBuffer =
+            await this.prepareImageForOmr(originalBuffer);
          const masterAnswers = capture.Exam.Questions.map((question) =>
             Number.isInteger(question.correct) ? question.correct : null,
          );
@@ -189,6 +193,7 @@ export class CorrectionOmrProcessor extends WorkerHost {
             timeoutMs: this.config.omrRequestTimeoutMs,
             omrEndpoint,
             originalImageBytes: originalBuffer.byteLength,
+            omrImageBytes: omrImageBuffer.byteLength,
          });
          this.operationalLog('correction_omr.omr_request_started', {
             jobId: job.id,
@@ -198,6 +203,7 @@ export class CorrectionOmrProcessor extends WorkerHost {
             timeoutMs: this.config.omrRequestTimeoutMs,
             omrEndpoint,
             originalImageBytes: originalBuffer.byteLength,
+            omrImageBytes: omrImageBuffer.byteLength,
          });
          const controller = new AbortController();
          const requestStartedAtMs = Date.now();
@@ -214,7 +220,7 @@ export class CorrectionOmrProcessor extends WorkerHost {
                body: JSON.stringify({
                   captureId,
                   sessionId,
-                  imageBase64: originalBuffer.toString('base64'),
+                  imageBase64: omrImageBuffer.toString('base64'),
                   compiledGeometryJson:
                      capture.Exam.TemplateVersion.compiledGeometryJson,
                   masterAnswers,
@@ -1062,6 +1068,35 @@ export class CorrectionOmrProcessor extends WorkerHost {
             mozjpeg: true,
          })
          .toBuffer();
+   }
+
+   private async prepareImageForOmr(buffer: Buffer) {
+      try {
+         const image = sharp(buffer).rotate();
+         const metadata = await image.metadata();
+         const width = metadata.width ?? 0;
+         const height = metadata.height ?? 0;
+         const maxDimension = Math.max(width, height);
+
+         if (maxDimension <= OMR_MAX_IMAGE_DIMENSION_PX) {
+            return buffer;
+         }
+
+         return image
+            .resize({
+               width: OMR_MAX_IMAGE_DIMENSION_PX,
+               height: OMR_MAX_IMAGE_DIMENSION_PX,
+               fit: 'inside',
+               withoutEnlargement: true,
+            })
+            .jpeg({
+               quality: 85,
+               mozjpeg: true,
+            })
+            .toBuffer();
+      } catch {
+         return buffer;
+      }
    }
 
    private toJson(value: unknown): Prisma.InputJsonValue {
