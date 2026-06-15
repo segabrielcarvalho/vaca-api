@@ -45,6 +45,8 @@ type OmrProcessResponse = {
    };
 };
 
+const OMR_DEFAULT_MAX_IMAGE_DIMENSION_PX = 1400;
+const OMR_MIN_IMAGE_DIMENSION_PX = 700;
 const OMR_MAX_IMAGE_DIMENSION_PX = 1400;
 
 @Processor(QUEUES.CORRECTION_OMR)
@@ -177,8 +179,13 @@ export class CorrectionOmrProcessor extends WorkerHost {
 
       let omrResponse: OmrProcessResponse;
       try {
-         const omrImageBuffer =
-            await this.prepareImageForOmr(originalBuffer);
+         const omrMaxImageDimensionPx = this.resolveOmrMaxImageDimension(
+            capture.Exam.TemplateVersion.compiledGeometryJson,
+         );
+         const omrImageBuffer = await this.prepareImageForOmr(
+            originalBuffer,
+            omrMaxImageDimensionPx,
+         );
          const masterAnswers = capture.Exam.Questions.map((question) =>
             Number.isInteger(question.correct) ? question.correct : null,
          );
@@ -194,6 +201,7 @@ export class CorrectionOmrProcessor extends WorkerHost {
             omrEndpoint,
             originalImageBytes: originalBuffer.byteLength,
             omrImageBytes: omrImageBuffer.byteLength,
+            omrMaxImageDimensionPx,
          });
          this.operationalLog('correction_omr.omr_request_started', {
             jobId: job.id,
@@ -204,6 +212,7 @@ export class CorrectionOmrProcessor extends WorkerHost {
             omrEndpoint,
             originalImageBytes: originalBuffer.byteLength,
             omrImageBytes: omrImageBuffer.byteLength,
+            omrMaxImageDimensionPx,
          });
          const controller = new AbortController();
          const requestStartedAtMs = Date.now();
@@ -1071,7 +1080,10 @@ export class CorrectionOmrProcessor extends WorkerHost {
          .toBuffer();
    }
 
-   private async prepareImageForOmr(buffer: Buffer) {
+   private async prepareImageForOmr(
+      buffer: Buffer,
+      maxImageDimensionPx = OMR_DEFAULT_MAX_IMAGE_DIMENSION_PX,
+   ) {
       try {
          const image = sharp(buffer).rotate();
          const metadata = await image.metadata();
@@ -1079,14 +1091,14 @@ export class CorrectionOmrProcessor extends WorkerHost {
          const height = metadata.height ?? 0;
          const maxDimension = Math.max(width, height);
 
-         if (maxDimension <= OMR_MAX_IMAGE_DIMENSION_PX) {
+         if (maxDimension <= maxImageDimensionPx) {
             return buffer;
          }
 
          return image
             .resize({
-               width: OMR_MAX_IMAGE_DIMENSION_PX,
-               height: OMR_MAX_IMAGE_DIMENSION_PX,
+               width: maxImageDimensionPx,
+               height: maxImageDimensionPx,
                fit: 'inside',
                withoutEnlargement: true,
             })
@@ -1098,6 +1110,66 @@ export class CorrectionOmrProcessor extends WorkerHost {
       } catch {
          return buffer;
       }
+   }
+
+   private resolveOmrMaxImageDimension(compiledGeometryJson: unknown) {
+      const geometry = this.parseGeometry(compiledGeometryJson);
+      const candidates = [
+         this.readNumberPath(geometry, ['processing', 'maxImageDimensionPx']),
+         this.readNumberPath(geometry, ['page', 'maxImageDimensionPx']),
+      ];
+      const requested = candidates.find((value) => Number.isFinite(value));
+
+      if (requested == null) {
+         return OMR_DEFAULT_MAX_IMAGE_DIMENSION_PX;
+      }
+
+      return Math.max(
+         OMR_MIN_IMAGE_DIMENSION_PX,
+         Math.min(OMR_MAX_IMAGE_DIMENSION_PX, Math.round(requested)),
+      );
+   }
+
+   private parseGeometry(value: unknown): Record<string, unknown> | undefined {
+      if (!value) return undefined;
+      if (typeof value === 'string') {
+         try {
+            const parsed = JSON.parse(value) as unknown;
+            return this.asRecord(parsed);
+         } catch {
+            return undefined;
+         }
+      }
+
+      return this.asRecord(value);
+   }
+
+   private asRecord(value: unknown): Record<string, unknown> | undefined {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) {
+         return undefined;
+      }
+
+      return value as Record<string, unknown>;
+   }
+
+   private readNumberPath(
+      value: Record<string, unknown> | undefined,
+      path: string[],
+   ) {
+      let current: unknown = value;
+      for (const key of path) {
+         const record = this.asRecord(current);
+         if (!record) return undefined;
+         current = record[key];
+      }
+
+      if (typeof current === 'number') return current;
+      if (typeof current === 'string' && current.trim()) {
+         const parsed = Number(current);
+         return Number.isFinite(parsed) ? parsed : undefined;
+      }
+
+      return undefined;
    }
 
    private toJson(value: unknown): Prisma.InputJsonValue {

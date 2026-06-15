@@ -1,5 +1,6 @@
 import { CorrectionEventStageEnum } from '../enums/correction-event-stage.enum';
 import { CorrectionOmrProcessor } from './correction-omr.processor';
+import sharp from 'sharp';
 
 describe('CorrectionOmrProcessor', () => {
    const originalFetch = global.fetch;
@@ -20,6 +21,55 @@ describe('CorrectionOmrProcessor', () => {
    afterEach(() => {
       global.fetch = originalFetch;
       jest.restoreAllMocks();
+   });
+
+   it('respeita limite de imagem definido no template antes de chamar o OMR', async () => {
+      const processor = new CorrectionOmrProcessor(
+         {} as never,
+         logger as never,
+         {} as never,
+         {} as never,
+         {} as never,
+         {} as never,
+         {} as never,
+         {
+            omrBaseUrl: 'http://omr.local',
+            omrRequestTimeoutMs: 1000,
+            debugTrace: false,
+         } as never,
+      );
+      const source = await sharp({
+         create: {
+            width: 1800,
+            height: 900,
+            channels: 3,
+            background: '#ffffff',
+         },
+      })
+         .jpeg()
+         .toBuffer();
+
+      const resized = await (
+         processor as unknown as {
+            prepareImageForOmr: (
+               buffer: Buffer,
+               maxImageDimensionPx?: number,
+            ) => Promise<Buffer>;
+            resolveOmrMaxImageDimension: (geometry: unknown) => number;
+         }
+      ).prepareImageForOmr(
+         source,
+         (
+            processor as unknown as {
+               resolveOmrMaxImageDimension: (geometry: unknown) => number;
+            }
+         ).resolveOmrMaxImageDimension({
+            processing: { maxImageDimensionPx: 900 },
+         }),
+      );
+
+      const metadata = await sharp(resized).metadata();
+      expect(Math.max(metadata.width ?? 0, metadata.height ?? 0)).toBe(900);
    });
 
    it('publica quantidade de acertos e total de questões ao corrigir captura', async () => {
